@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Language {
+  EN
+  AS
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  excerpt     String?
+  coverImage  String?
+  content     Json       // Tiptap JSON document
+  contentHtml String     // pre-rendered HTML for fast public rendering
+  language    Language   @default(EN)
+  status      PostStatus @default(DRAFT)
+  publishedAt DateTime?
+  readingTime Int        @default(1)
+  tags        Tag[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([language])
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String @unique
+  posts Post[]
+}
