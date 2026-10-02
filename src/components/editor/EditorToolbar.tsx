@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react";
 import { type Editor } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -36,15 +37,33 @@ import {
   Undo,
   Redo,
   Upload,
+  Keyboard,
+  Languages,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
 interface EditorToolbarProps {
   editor: Editor | null;
   onImageUpload?: (file: File) => Promise<string>;
+  isAssamese?: boolean;
+  phoneticEnabled?: boolean;
+  onTogglePhonetic?: () => void;
+  onTogglePalette?: () => void;
+  isPaletteOpen?: boolean;
+  onTransliterateContent?: () => void;
 }
 
-export function EditorToolbar({ editor, onImageUpload }: EditorToolbarProps) {
+export function EditorToolbar({
+  editor,
+  onImageUpload,
+  isAssamese = false,
+  phoneticEnabled = false,
+  onTogglePhonetic,
+  onTogglePalette,
+  isPaletteOpen = false,
+  onTransliterateContent,
+}: EditorToolbarProps) {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
 
@@ -137,278 +156,329 @@ export function EditorToolbar({ editor, onImageUpload }: EditorToolbarProps) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1 rounded-t-xl border border-b-0 bg-muted/40 p-2 text-foreground">
-        {/* Undo / Redo */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
-          aria-label="Undo"
-          title="Undo (Ctrl+Z)"
-        >
-          <Undo className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
-          aria-label="Redo"
-          title="Redo (Ctrl+Y)"
-        >
-          <Redo className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        {/* Headings */}
-        <Button
-          type="button"
-          variant={editor.isActive("paragraph") ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().setParagraph().run()}
-          aria-label="Paragraph"
-          title="Normal Text / Paragraph"
-        >
-          <Pilcrow className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive("heading", { level: 1 }) ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          aria-label="Heading 1"
-          title="Heading 1"
-        >
-          <Heading1 className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive("heading", { level: 2 }) ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          aria-label="Heading 2"
-          title="Heading 2"
-        >
-          <Heading2 className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive("heading", { level: 3 }) ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          aria-label="Heading 3"
-          title="Heading 3"
-        >
-          <Heading3 className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        {/* Inline Formatting */}
-        <Button
-          type="button"
-          variant={editor.isActive("bold") ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          aria-label="Bold"
-          title="Bold (Ctrl+B)"
-        >
-          <Bold className="h-4 w-4 font-bold" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive("italic") ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          aria-label="Italic"
-          title="Italic (Ctrl+I)"
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive("underline") ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          aria-label="Underline"
-          title="Underline (Ctrl+U)"
-        >
-          <UnderlineIcon className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive("strike") ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          aria-label="Strikethrough"
-          title="Strikethrough"
-        >
-          <Strikethrough className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive("code") ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          aria-label="Inline Code"
-          title="Inline Code"
-        >
-          <Code className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        {/* Text Alignment */}
-        <Button
-          type="button"
-          variant={editor.isActive({ textAlign: "left" }) ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().setTextAlign("left").run()}
-          aria-label="Align Left"
-          title="Align Left"
-        >
-          <AlignLeft className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive({ textAlign: "center" }) ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().setTextAlign("center").run()}
-          aria-label="Align Center"
-          title="Align Center"
-        >
-          <AlignCenter className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive({ textAlign: "right" }) ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().setTextAlign("right").run()}
-          aria-label="Align Right"
-          title="Align Right"
-        >
-          <AlignRight className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        {/* Lists & Quotes */}
-        <Button
-          type="button"
-          variant={editor.isActive("bulletList") ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          aria-label="Bullet List"
-          title="Bullet List"
-        >
-          <List className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive("orderedList") ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          aria-label="Numbered List"
-          title="Numbered List"
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant={editor.isActive("blockquote") ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          aria-label="Blockquote"
-          title="Blockquote"
-        >
-          <Quote className="h-4 w-4" />
-        </Button>
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          aria-label="Horizontal Rule"
-          title="Horizontal Rule"
-        >
-          <Minus className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        {/* Links & Images */}
-        <Button
-          type="button"
-          variant={editor.isActive("link") ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          onClick={handleOpenLinkDialog}
-          aria-label="Insert Link"
-          title="Insert Hyperlink"
-        >
-          <LinkIcon className="h-4 w-4" />
-        </Button>
-
-        {editor.isActive("link") && (
+      <div className="flex flex-wrap items-center justify-between gap-1 rounded-t-xl border border-b-0 bg-muted/40 p-2 text-foreground">
+        <div className="flex flex-wrap items-center gap-1">
+          {/* Undo / Redo */}
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-destructive"
-            onClick={() => editor.chain().focus().unsetLink().run()}
-            aria-label="Remove Link"
-            title="Remove Hyperlink"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={!editor.can().undo()}
+            aria-label="Undo"
+            title="Undo (Ctrl+Z)"
           >
-            <Unlink className="h-4 w-4" />
+            <Undo className="h-4 w-4" />
           </Button>
-        )}
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-primary"
-          onClick={handleOpenImageDialog}
-          aria-label="Insert Image"
-          title="Insert or Upload Image"
-        >
-          <ImageIcon className="h-4 w-4" />
-        </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={!editor.can().redo()}
+            aria-label="Redo"
+            title="Redo (Ctrl+Y)"
+          >
+            <Redo className="h-4 w-4" />
+          </Button>
+
+          <Separator orientation="vertical" className="mx-1 h-6" />
+
+          {/* Headings */}
+          <Button
+            type="button"
+            variant={editor.isActive("paragraph") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().setParagraph().run()}
+            aria-label="Paragraph"
+            title="Normal Text / Paragraph"
+          >
+            <Pilcrow className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive("heading", { level: 1 }) ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            aria-label="Heading 1"
+            title="Heading 1"
+          >
+            <Heading1 className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive("heading", { level: 2 }) ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            aria-label="Heading 2"
+            title="Heading 2"
+          >
+            <Heading2 className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive("heading", { level: 3 }) ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+            aria-label="Heading 3"
+            title="Heading 3"
+          >
+            <Heading3 className="h-4 w-4" />
+          </Button>
+
+          <Separator orientation="vertical" className="mx-1 h-6" />
+
+          {/* Inline Formatting */}
+          <Button
+            type="button"
+            variant={editor.isActive("bold") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            aria-label="Bold"
+            title="Bold (Ctrl+B)"
+          >
+            <Bold className="h-4 w-4 font-bold" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive("italic") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            aria-label="Italic"
+            title="Italic (Ctrl+I)"
+          >
+            <Italic className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive("underline") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            aria-label="Underline"
+            title="Underline (Ctrl+U)"
+          >
+            <UnderlineIcon className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive("strike") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            aria-label="Strikethrough"
+            title="Strikethrough"
+          >
+            <Strikethrough className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive("code") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleCode().run()}
+            aria-label="Inline Code"
+            title="Inline Code"
+          >
+            <Code className="h-4 w-4" />
+          </Button>
+
+          <Separator orientation="vertical" className="mx-1 h-6" />
+
+          {/* Text Alignment */}
+          <Button
+            type="button"
+            variant={editor.isActive({ textAlign: "left" }) ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().setTextAlign("left").run()}
+            aria-label="Align Left"
+            title="Align Left"
+          >
+            <AlignLeft className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive({ textAlign: "center" }) ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().setTextAlign("center").run()}
+            aria-label="Align Center"
+            title="Align Center"
+          >
+            <AlignCenter className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive({ textAlign: "right" }) ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().setTextAlign("right").run()}
+            aria-label="Align Right"
+            title="Align Right"
+          >
+            <AlignRight className="h-4 w-4" />
+          </Button>
+
+          <Separator orientation="vertical" className="mx-1 h-6" />
+
+          {/* Lists & Quotes */}
+          <Button
+            type="button"
+            variant={editor.isActive("bulletList") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            aria-label="Bullet List"
+            title="Bullet List"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive("orderedList") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            aria-label="Numbered List"
+            title="Numbered List"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant={editor.isActive("blockquote") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            aria-label="Blockquote"
+            title="Blockquote"
+          >
+            <Quote className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            aria-label="Horizontal Rule"
+            title="Horizontal Rule"
+          >
+            <Minus className="h-4 w-4" />
+          </Button>
+
+          <Separator orientation="vertical" className="mx-1 h-6" />
+
+          {/* Links & Images */}
+          <Button
+            type="button"
+            variant={editor.isActive("link") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleOpenLinkDialog}
+            aria-label="Insert Link"
+            title="Insert Hyperlink"
+          >
+            <LinkIcon className="h-4 w-4" />
+          </Button>
+
+          {editor.isActive("link") && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              onClick={() => editor.chain().focus().unsetLink().run()}
+              aria-label="Remove Link"
+              title="Remove Hyperlink"
+            >
+              <Unlink className="h-4 w-4" />
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-primary"
+            onClick={handleOpenImageDialog}
+            aria-label="Insert Image"
+            title="Insert or Upload Image"
+          >
+            <ImageIcon className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Assamese / Bilingual Tools */}
+        <div className="flex items-center gap-1.5 pt-1 sm:pt-0">
+          {onTogglePhonetic && (
+            <Button
+              type="button"
+              variant={phoneticEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={onTogglePhonetic}
+              className={`h-8 gap-1.5 text-xs font-medium transition-all ${
+                phoneticEnabled
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Automatically converts typed English phonetic words into Assamese on spacebar"
+            >
+              <Languages className="h-3.5 w-3.5" />
+              <span>Phonetic IME: {phoneticEnabled ? "ON (অসমীয়া)" : "OFF"}</span>
+            </Button>
+          )}
+
+          {onTogglePalette && (
+            <Button
+              type="button"
+              variant={isPaletteOpen ? "secondary" : "ghost"}
+              size="sm"
+              onClick={onTogglePalette}
+              className="h-8 gap-1 text-xs font-assamese"
+              title="Show Assamese Character Keyboard & Palette"
+            >
+              <Keyboard className="h-3.5 w-3.5" />
+              <span>কিবৰ্ড</span>
+            </Button>
+          )}
+
+          {onTransliterateContent && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onTransliterateContent}
+              className="h-8 gap-1 text-xs text-primary hover:text-primary"
+              title="Convert entire content from English phonetics to Assamese"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <span>To Assamese</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Link Dialog */}

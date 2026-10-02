@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { generateSlug } from "@/lib/slug";
+import { transliterateTextToAssamese } from "@/lib/assamese-translit";
 import { PostInput } from "@/lib/validations";
 import { LanguageCode, SUPPORTED_LANGUAGES } from "@/lib/languages";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
@@ -317,20 +318,71 @@ export function PostForm({ initialData }: PostFormProps) {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Main Content (2 columns) */}
         <div className="space-y-6 lg:col-span-2">
+          {/* Assamese Active Information Banner */}
+          {language === "AS" && (
+            <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs text-foreground">
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <span className="font-semibold text-primary font-assamese text-sm">
+                  অসমীয়া লিখন প্ৰণালী সক্ৰিয় (Assamese Writing Mode)
+                </span>
+                <span className="text-muted-foreground hidden sm:inline">
+                  — Type English phonetically and press Space, or use the in-editor keyboard.
+                </span>
+              </div>
+              <Badge variant="outline" className="font-mono text-[10px]">
+                SMES / AS
+              </Badge>
+            </div>
+          )}
+
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="post-title" className="text-sm font-semibold">
-              Post Title *
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="post-title" className="text-sm font-semibold">
+                Post Title *
+              </Label>
+              {language === "AS" && title && /[a-zA-Z]/.test(title) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const converted = transliterateTextToAssamese(title);
+                    handleTitleChange(converted);
+                    toast.success("Converted title to Assamese");
+                  }}
+                  className="h-6 text-xs text-primary gap-1"
+                >
+                  <Sparkles className="h-3 w-3 text-amber-500" />
+                  <span>Convert Title to অসমীয়া</span>
+                </Button>
+              )}
+            </div>
             <Input
               id="post-title"
               placeholder={
                 language === "AS"
-                  ? "শীৰ্ষক ইয়াত লিখক..."
+                  ? "শীৰ্ষক ইয়াত লিখক... (e.g. 'Aaji bhal din')"
                   : "Enter a compelling title..."
               }
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (language === "AS" && e.key === " ") {
+                  // If ends with English word, convert on space
+                  const match = title.match(/([a-zA-Z]+)$/);
+                  if (match) {
+                    const converted = transliterateTextToAssamese(title);
+                    if (converted !== title) {
+                      setTitle(converted + " ");
+                      if (!isSlugManuallyEdited) {
+                        setSlug(generateSlug(converted));
+                      }
+                    }
+                  }
+                }
+              }}
               className={`text-lg sm:text-xl font-bold py-5 ${
                 language === "AS" ? "font-assamese" : ""
               }`}
@@ -372,9 +424,28 @@ export function PostForm({ initialData }: PostFormProps) {
 
           {/* Excerpt */}
           <div className="space-y-2">
-            <Label htmlFor="post-excerpt" className="text-sm font-semibold">
-              Short Excerpt / Summary
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="post-excerpt" className="text-sm font-semibold">
+                Short Excerpt / Summary
+              </Label>
+              {language === "AS" && excerpt && /[a-zA-Z]/.test(excerpt) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const converted = transliterateTextToAssamese(excerpt);
+                    setExcerpt(converted);
+                    setSaveStatus("unsaved");
+                    toast.success("Converted excerpt to Assamese");
+                  }}
+                  className="h-6 text-xs text-primary gap-1"
+                >
+                  <Sparkles className="h-3 w-3 text-amber-500" />
+                  <span>Convert Excerpt to অসমীয়া</span>
+                </Button>
+              )}
+            </div>
             <Textarea
               id="post-excerpt"
               rows={2}
@@ -383,6 +454,17 @@ export function PostForm({ initialData }: PostFormProps) {
               onChange={(e) => {
                 setExcerpt(e.target.value);
                 setSaveStatus("unsaved");
+              }}
+              onKeyDown={(e) => {
+                if (language === "AS" && e.key === " ") {
+                  const match = excerpt.match(/([a-zA-Z]+)$/);
+                  if (match) {
+                    const converted = transliterateTextToAssamese(excerpt);
+                    if (converted !== excerpt) {
+                      setExcerpt(converted + " ");
+                    }
+                  }
+                }
               }}
               className={language === "AS" ? "font-assamese" : ""}
             />
