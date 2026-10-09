@@ -96,11 +96,11 @@ export default async function SinglePostPage({ params }: PostPageProps) {
         <div className="container mx-auto max-w-3xl px-4 sm:px-6">
           {/* Back Navigation */}
           <Link
-            href="/"
+            href="/blog"
             className="group mb-8 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-            <span>Back to all posts</span>
+            <span>Back to writings</span>
           </Link>
 
           {/* Article Header */}
@@ -108,12 +108,12 @@ export default async function SinglePostPage({ params }: PostPageProps) {
             <div className="flex flex-wrap items-center gap-2.5">
               <Badge
                 variant={isAssamese ? "default" : "secondary"}
-                className="font-medium text-xs shadow-sm"
+                className="rounded-none font-medium text-xs border border-border/60"
               >
                 {langConfig.nativeName}
               </Badge>
 
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5" />
                   <time dateTime={post.publishedAt?.toISOString()}>
@@ -139,6 +139,13 @@ export default async function SinglePostPage({ params }: PostPageProps) {
               {post.title}
             </h1>
 
+            {/* Author Attribution */}
+            <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground font-mono border-l-2 border-primary pl-3">
+              <span>Prof. Surajit Borkotokey</span>
+              <span>&bull;</span>
+              <span>Dibrugarh University</span>
+            </div>
+
             {post.excerpt && (
               <p
                 lang={langConfig.langAttr}
@@ -156,7 +163,7 @@ export default async function SinglePostPage({ params }: PostPageProps) {
                 {post.tags.map((tag) => (
                   <span
                     key={tag.id}
-                    className="rounded-full bg-secondary/80 px-3 py-1 text-xs font-medium text-secondary-foreground"
+                    className="rounded-none border border-border/60 bg-secondary/60 px-2.5 py-0.5 text-xs font-mono text-secondary-foreground"
                   >
                     #{tag.name}
                   </span>
@@ -167,7 +174,7 @@ export default async function SinglePostPage({ params }: PostPageProps) {
 
           {/* Cover Image */}
           {post.coverImage && (
-            <div className="relative mb-12 aspect-[16/9] w-full overflow-hidden rounded-2xl border bg-muted shadow-md">
+            <div className="relative mb-12 aspect-[16/9] w-full overflow-hidden rounded-none border border-border bg-muted">
               <Image
                 src={post.coverImage}
                 alt={post.title}

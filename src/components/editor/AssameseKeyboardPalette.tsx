@@ -73,7 +73,7 @@ export function AssameseKeyboardPalette({
   }
 
   return (
-    <div className="rounded-xl border bg-muted/30 p-4 shadow-sm space-y-4 font-sans animate-in fade-in-50 duration-200">
+    <div className="rounded-none border bg-muted/30 p-4 shadow-none space-y-4 font-sans animate-in fade-in-50 duration-200">
       {/* Header */}
       <div className="flex items-center justify-between border-b pb-2.5">
         <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export function AssameseKeyboardPalette({
       </div>
 
       {/* Interactive Phonetic Transliteration Box */}
-      <div className="rounded-lg border bg-background p-3 space-y-2">
+      <div className="rounded-none border bg-background p-3 space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="font-medium text-muted-foreground flex items-center gap-1">
             <Sparkles className="h-3 w-3 text-amber-500" />
@@ -118,7 +118,7 @@ export function AssameseKeyboardPalette({
           />
 
           <div className="flex items-center gap-2">
-            <div className="flex-1 rounded-md border bg-muted/40 px-3 py-2 text-base font-assamese truncate min-h-[38px] flex items-center text-foreground font-semibold">
+            <div className="flex-1 rounded-none border bg-muted/40 px-3 py-2 text-base font-assamese truncate min-h-[38px] flex items-center text-foreground font-semibold">
               {convertedText || <span className="text-muted-foreground font-normal text-xs">অসমীয়া ফলাফল ইয়াত ওলাব...</span>}
             </div>
 
@@ -162,7 +162,7 @@ export function AssameseKeyboardPalette({
                 key={char}
                 type="button"
                 onClick={() => onInsertChar(char)}
-                className="flex h-8 w-8 items-center justify-center rounded-md border bg-background font-assamese text-base font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:scale-95"
+                className="flex h-8 w-8 items-center justify-center rounded-none border bg-background font-assamese text-base font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:scale-95"
                 title={`Insert ${char}`}
               >
                 {char}
@@ -182,7 +182,7 @@ export function AssameseKeyboardPalette({
                 key={char}
                 type="button"
                 onClick={() => onInsertChar(char)}
-                className="flex h-8 w-8 items-center justify-center rounded-md border bg-secondary font-assamese text-base font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:scale-95"
+                className="flex h-8 w-8 items-center justify-center rounded-none border bg-secondary font-assamese text-base font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:scale-95"
                 title={`Insert ${char}`}
               >
                 {char}
@@ -202,7 +202,7 @@ export function AssameseKeyboardPalette({
                 key={char}
                 type="button"
                 onClick={() => onInsertChar(char)}
-                className="flex h-8 w-8 items-center justify-center rounded-md border bg-background font-assamese text-base font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:scale-95"
+                className="flex h-8 w-8 items-center justify-center rounded-none border bg-background font-assamese text-base font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:scale-95"
                 title={`Insert ${char}`}
               >
                 {char}
@@ -223,7 +223,7 @@ export function AssameseKeyboardPalette({
                   key={char}
                   type="button"
                   onClick={() => onInsertChar(char)}
-                  className="px-2 h-8 flex items-center justify-center rounded-md border bg-background font-assamese text-sm font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:scale-95"
+                  className="px-2 h-8 flex items-center justify-center rounded-none border bg-background font-assamese text-sm font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:scale-95"
                   title={`Insert ${char}`}
                 >
                   {char}
@@ -242,7 +242,7 @@ export function AssameseKeyboardPalette({
                   key={char}
                   type="button"
                   onClick={() => onInsertChar(char)}
-                  className="flex h-8 w-8 items-center justify-center rounded-md border bg-background font-assamese text-base font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:scale-95"
+                  className="flex h-8 w-8 items-center justify-center rounded-none border bg-background font-assamese text-base font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:scale-95"
                   title={`Insert ${char}`}
                 >
                   {char}

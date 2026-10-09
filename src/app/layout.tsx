@@ -20,10 +20,11 @@ const notoSansBengali = Noto_Sans_Bengali({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Minimalist Bilingual Blog",
-    default: "Minimalist Bilingual Blog | Essays & Thoughts",
+    template: "%s | Prof. Surajit Borkotokey",
+    default: "Prof. Surajit Borkotokey | Mathematics, Game Theory & Bilingual Archive",
   },
-  description: "A thoughtful personal journal published in English and Assamese (অসমীয়া).",
+  description:
+    "Personal blog and academic archive of Prof. Surajit Borkotokey, Professor of Mathematics at Dibrugarh University and Senior Visiting Research Fellow at Corvinus IAS Budapest. Essays and research perspectives published in English and Assamese (অসমীয়া).",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   alternates: {
     types: {
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    siteName: "Personal Bilingual Blog",
+    siteName: "Prof. Surajit Borkotokey",
     type: "website",
     locale: "en_US",
   },
@@ -51,8 +52,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          forcedTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <TooltipProvider delay={200}>

@@ -232,7 +232,6 @@ export function transliterateWordToAssamese(word: string): string {
   let result = "";
   let i = 0;
   const len = word.length;
-  let prevWasConsonant = false;
 
   while (i < len) {
     const char = word[i];
@@ -241,7 +240,6 @@ export function transliterateWordToAssamese(word: string): string {
     if (!/[a-zA-Z]/.test(char)) {
       result += char;
       i++;
-      prevWasConsonant = false;
       continue;
     }
 
@@ -259,7 +257,6 @@ export function transliterateWordToAssamese(word: string): string {
 
     if (matchedCons) {
       i += matchLen;
-      prevWasConsonant = true;
 
       // Look ahead for vowel matra
       const remaining = word.substr(i).toLowerCase();
@@ -281,7 +278,6 @@ export function transliterateWordToAssamese(word: string): string {
       if (matchedMatra !== null) {
         result += matchedCons + matchedMatra;
         i += vLen;
-        prevWasConsonant = false;
 
         // Check if diphthong vowel follows, e.g. "pao" -> "পা" + "ও"
         if (matchedMatra === "া" && word.substr(i).toLowerCase().startsWith("o")) {
@@ -326,7 +322,6 @@ export function transliterateWordToAssamese(word: string): string {
         result += char;
         i++;
       }
-      prevWasConsonant = false;
     }
   }
 

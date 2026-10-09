@@ -4,7 +4,6 @@ import React, { useState, useRef } from "react";
 import { type Editor } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -38,10 +37,16 @@ import {
   Redo,
   Upload,
   Keyboard,
+  Maximize2,
+  Minimize2,
+  HelpCircle,
   Languages,
   Sparkles,
+  FileCode,
+  Command,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "cn";
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -52,18 +57,25 @@ interface EditorToolbarProps {
   onTogglePalette?: () => void;
   isPaletteOpen?: boolean;
   onTransliterateContent?: () => void;
+  isFullScreen?: boolean;
+  onToggleFullScreen?: () => void;
+  className?: string;
 }
 
 export function EditorToolbar({
   editor,
   onImageUpload,
-  isAssamese = false,
   phoneticEnabled = false,
   onTogglePhonetic,
   onTogglePalette,
   isPaletteOpen = false,
   onTransliterateContent,
+  isFullScreen = false,
+  onToggleFullScreen,
+  className,
 }: EditorToolbarProps) {
+  const [smsGuideOpen, setSmsGuideOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
 
@@ -156,7 +168,15 @@ export function EditorToolbar({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-1 rounded-t-xl border border-b-0 bg-muted/40 p-2 text-foreground">
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-1 p-2 text-foreground transition-all",
+          isFullScreen
+            ? "sticky top-14 z-30 bg-background/95 backdrop-blur-md border-b border-border/60 shadow-xs"
+            : "rounded-none border border-b-0 bg-muted/40",
+          className
+        )}
+      >
         <div className="flex flex-wrap items-center gap-1">
           {/* Undo / Redo */}
           <Button
@@ -379,12 +399,24 @@ export function EditorToolbar({
 
           <Button
             type="button"
+            variant={editor.isActive("codeBlock") ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+            aria-label="Code Block"
+            title="Preformatted Code Block"
+          >
+            <FileCode className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
             variant="ghost"
             size="icon"
             className="h-8 w-8"
             onClick={() => editor.chain().focus().setHorizontalRule().run()}
             aria-label="Horizontal Rule"
-            title="Horizontal Rule"
+            title="Horizontal Divider"
           >
             <Minus className="h-4 w-4" />
           </Button>
@@ -431,7 +463,7 @@ export function EditorToolbar({
           </Button>
         </div>
 
-        {/* Assamese / Bilingual Tools */}
+        {/* Assamese / Bilingual Tools & FullScreen */}
         <div className="flex items-center gap-1.5 pt-1 sm:pt-0">
           {onTogglePhonetic && (
             <Button
@@ -441,13 +473,27 @@ export function EditorToolbar({
               onClick={onTogglePhonetic}
               className={`h-8 gap-1.5 text-xs font-medium transition-all ${
                 phoneticEnabled
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground border-border/80"
               }`}
-              title="Automatically converts typed English phonetic words into Assamese on spacebar"
+              title="SMS Typing: Type in English (e.g. namaskar, axom, luit) + Space converts to Assamese"
             >
               <Languages className="h-3.5 w-3.5" />
-              <span>Phonetic IME: {phoneticEnabled ? "ON (অসমীয়া)" : "OFF"}</span>
+              <span>SMS Keyboard: {phoneticEnabled ? "ON" : "OFF"}</span>
+            </Button>
+          )}
+
+          {phoneticEnabled && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSmsGuideOpen(true)}
+              className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+              title="How to type Assamese using English / SMS keyboard"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Guide</span>
             </Button>
           )}
 
@@ -458,7 +504,7 @@ export function EditorToolbar({
               size="sm"
               onClick={onTogglePalette}
               className="h-8 gap-1 text-xs font-assamese"
-              title="Show Assamese Character Keyboard & Palette"
+              title="Assamese Character Palette / On-Screen Keyboard"
             >
               <Keyboard className="h-3.5 w-3.5" />
               <span>কিবৰ্ড</span>
@@ -475,7 +521,33 @@ export function EditorToolbar({
               title="Convert entire content from English phonetics to Assamese"
             >
               <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              <span>To Assamese</span>
+              <span>To অসমীয়া</span>
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={() => setShortcutsOpen(true)}
+            aria-label="Keyboard Shortcuts"
+            title="Keyboard Shortcuts & Markdown Tricks"
+          >
+            <Command className="h-3.5 w-3.5" />
+          </Button>
+
+          {onToggleFullScreen && (
+            <Button
+              type="button"
+              variant={isFullScreen ? "default" : "outline"}
+              size="sm"
+              onClick={onToggleFullScreen}
+              className="h-8 gap-1.5 text-xs font-mono ml-1"
+              title={isFullScreen ? "Exit Full-Screen Canvas" : "Full-Screen Writing Canvas"}
+            >
+              {isFullScreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{isFullScreen ? "Exit Fullscreen" : "Fullscreen"}</span>
             </Button>
           )}
         </div>
@@ -572,7 +644,7 @@ export function EditorToolbar({
             </div>
 
             {imageUrl && (
-              <div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+              <div className="relative aspect-video w-full overflow-hidden rounded-none border bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl}
@@ -590,6 +662,160 @@ export function EditorToolbar({
               Insert Image
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* SMS Typing Guide Dialog */}
+      <Dialog open={smsGuideOpen} onOpenChange={setSmsGuideOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Languages className="h-5 w-5 text-primary" />
+              <span>Assamese SMS Keyboard Guide (ফনেটিক সহায়িকা)</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-sm">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              When SMS Keyboard is ON, type words in standard English/SMS spelling. Pressing <strong>Space</strong> or punctuation converts the word into authentic Assamese script automatically.
+            </p>
+
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Common Word Examples:</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono">
+                <div><code>namaskar</code> → নমস্কাৰ</div>
+                <div><code>axom / asom</code> → অসম</div>
+                <div><code>axomiya</code> → অসমীয়া</div>
+                <div><code>bhal</code> → ভাল</div>
+                <div><code>dhanyabad</code> → ধন্যবাদ</div>
+                <div><code>luit</code> → লুইত</div>
+                <div><code>borluit</code> → বৰলুইত</div>
+                <div><code>tumi</code> → তুমি</div>
+                <div><code>apuni</code> → আপুনি</div>
+                <div><code>moi</code> → মই</div>
+                <div><code>aami</code> → আমি</div>
+                <div><code>bhasha</code> → ভাষা</div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Letter Mapping:</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                <div><code>k</code> = ক, <code>kh</code> = খ</div>
+                <div><code>g</code> = গ, <code>gh</code> = ঘ</div>
+                <div><code>c / s</code> = চ, <code>j</code> = জ</div>
+                <div><code>t</code> = ট, <code>th</code> = ঠ</div>
+                <div><code>d</code> = ড, <code>dh</code> = ঢ</div>
+                <div><code>p</code> = প, <code>ph / f</code> = ফ</div>
+                <div><code>b</code> = ব, <code>bh / v</code> = ভ</div>
+                <div><code>m</code> = ম, <code>r</code> = ৰ</div>
+                <div><code>w</code> = ৱ, <code>l</code> = ল</div>
+                <div><code>x / s</code> = স / শ</div>
+                <div><code>h</code> = হ, <code>khy</code> = ক্ষ</div>
+                <div><code>gy</code> = জ্ঞ, <code>ng</code> = ং / ঙ</div>
+              </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground italic">
+              Tip: You can also use the on-screen &ldquo;কিবৰ্ড&rdquo; palette button on the toolbar to click and insert any character directly.
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Keyboard Shortcuts Dialog */}
+      <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Command className="h-5 w-5 text-primary" />
+              <span>Keyboard Shortcuts &amp; Speed Tips</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <div className="space-y-2">
+              <h4 className="font-semibold uppercase tracking-wider text-muted-foreground">Text Formatting</h4>
+              <div className="grid grid-cols-2 gap-2 font-mono">
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Bold</span>
+                  <code>Ctrl+B / ⌘B</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Italic</span>
+                  <code>Ctrl+I / ⌘I</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Underline</span>
+                  <code>Ctrl+U / ⌘U</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Inline Code</span>
+                  <code>Ctrl+E / ⌘E</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Undo</span>
+                  <code>Ctrl+Z / ⌘Z</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Redo</span>
+                  <code>Ctrl+Y / ⌘⇧Z</code>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold uppercase tracking-wider text-muted-foreground">Markdown Headings &amp; Blocks</h4>
+              <div className="grid grid-cols-2 gap-2 font-mono">
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Heading 1</span>
+                  <code># + Space</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Heading 2</span>
+                  <code>## + Space</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Heading 3</span>
+                  <code>### + Space</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Bullet List</span>
+                  <code>- + Space</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Numbered List</span>
+                  <code>1. + Space</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Blockquote</span>
+                  <code>&gt; + Space</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Divider Line</span>
+                  <code>--- + Enter</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Code Block</span>
+                  <code>``` + Space</code>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold uppercase tracking-wider text-muted-foreground">Assamese &amp; Studio</h4>
+              <div className="grid grid-cols-1 gap-2 font-mono">
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Assamese SMS Transliteration</span>
+                  <code>Type in English + Space</code>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Exit Fullscreen Studio</span>
+                  <code>Esc</code>
+                </div>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>

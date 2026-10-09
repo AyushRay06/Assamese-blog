@@ -43,3 +43,16 @@ model Tag {
   name  String @unique
   posts Post[]
 }
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  status    String   @default("UNREAD") // UNREAD, READ, ARCHIVED
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([status])
+}

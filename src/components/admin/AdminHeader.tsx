@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { ShieldCheck, Plus, ArrowUpRight, LayoutDashboard } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "cn";
@@ -13,7 +12,7 @@ export function AdminHeader() {
             href="/admin"
             className="flex items-center gap-2.5 font-bold text-lg tracking-tight"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <div className="flex h-8 w-8 items-center justify-center rounded-none border border-primary/30 bg-primary text-primary-foreground">
               <ShieldCheck className="h-4 w-4" />
             </div>
             <span className="font-heading">Admin Dashboard</span>
@@ -53,11 +52,9 @@ export function AdminHeader() {
               "gap-1.5 text-xs text-muted-foreground hover:text-foreground"
             )}
           >
-            <span>View Blog</span>
+            <span>View Public Site</span>
             <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
-
-          <ThemeToggle />
         </div>
       </div>
     </header>

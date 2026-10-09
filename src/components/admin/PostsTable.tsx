@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -81,7 +81,7 @@ export function PostsTable({ posts }: PostsTableProps) {
     });
   };
 
-  const handleToggleStatus = (id: string, currentStatus: string) => {
+  const handleToggleStatus = (id: string) => {
     startTransition(async () => {
       try {
         const result = await togglePostStatusAction(id);
@@ -97,7 +97,7 @@ export function PostsTable({ posts }: PostsTableProps) {
 
   if (posts.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-12 text-center">
+      <div className="rounded-none border border-dashed p-12 text-center">
         <h3 className="text-base font-semibold text-foreground">No posts created yet</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Get started by crafting your first bilingual essay or thought.
@@ -114,7 +114,7 @@ export function PostsTable({ posts }: PostsTableProps) {
 
   return (
     <>
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+      <div className="rounded-none border bg-card shadow-none overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -226,7 +226,7 @@ export function PostsTable({ posts }: PostsTableProps) {
                           )}
 
                           <DropdownMenuItem
-                            onClick={() => handleToggleStatus(post.id, post.status)}
+                            onClick={() => handleToggleStatus(post.id)}
                             className="flex items-center gap-2 cursor-pointer"
                           >
                             {isPublished ? (

@@ -13,6 +13,14 @@ import { AssameseKeyboardPalette } from "./AssameseKeyboardPalette";
 import { transliterateTextToAssamese, transliterateWordToAssamese } from "@/lib/assamese-translit";
 import { toast } from "sonner";
 import { LanguageCode } from "@/lib/languages";
+import { cn } from "cn";
+
+export interface EditorStats {
+  words: number;
+  chars: number;
+  readingTime: number;
+  paragraphs: number;
+}
 
 interface TiptapEditorProps {
   initialContent?: object | string;
@@ -20,6 +28,10 @@ interface TiptapEditorProps {
   onChange: (data: { json: object; html: string }) => void;
   placeholder?: string;
   className?: string;
+  isFullScreen?: boolean;
+  onToggleFullScreen?: () => void;
+  fontSize?: "normal" | "comfortable" | "spacious";
+  onStatsChange?: (stats: EditorStats) => void;
 }
 
 export function TiptapEditor({
@@ -28,18 +40,27 @@ export function TiptapEditor({
   onChange,
   placeholder,
   className = "",
+  isFullScreen = false,
+  onToggleFullScreen,
+  fontSize = "normal",
+  onStatsChange,
 }: TiptapEditorProps) {
   const isAssamese = language === "AS";
 
   // Phonetic typing state (auto-enabled when language is Assamese)
   const [phoneticEnabled, setPhoneticEnabled] = useState(isAssamese);
+  const [prevLanguage, setPrevLanguage] = useState(language);
+  if (prevLanguage !== language) {
+    setPrevLanguage(language);
+    setPhoneticEnabled(language === "AS");
+  }
+
   const [paletteOpen, setPaletteOpen] = useState(false);
   const phoneticRef = useRef(phoneticEnabled);
-  phoneticRef.current = phoneticEnabled;
 
   useEffect(() => {
-    setPhoneticEnabled(language === "AS");
-  }, [language]);
+    phoneticRef.current = phoneticEnabled;
+  }, [phoneticEnabled]);
 
   const uploadFile = useCallback(async (file: File): Promise<string> => {
     const formData = new FormData();
@@ -58,6 +79,30 @@ export function TiptapEditor({
     const data = await res.json();
     return data.url;
   }, []);
+
+  const getProseClasses = useCallback(() => {
+    let sizeClass = "text-base sm:text-lg leading-relaxed";
+    if (fontSize === "comfortable") {
+      sizeClass = isAssamese
+        ? "text-xl sm:text-2xl leading-loose"
+        : "text-lg sm:text-[19px] leading-relaxed";
+    } else if (fontSize === "spacious") {
+      sizeClass = isAssamese
+        ? "text-2xl sm:text-3xl leading-loose"
+        : "text-xl sm:text-[21px] leading-loose";
+    } else {
+      sizeClass = isAssamese
+        ? "text-lg sm:text-xl leading-relaxed"
+        : "text-base sm:text-lg leading-relaxed";
+    }
+
+    const fontClass = isAssamese ? "font-assamese" : "font-sans";
+    const paddingClass = isFullScreen
+      ? "px-2 py-4 sm:py-6 min-h-[60vh] pb-72"
+      : "p-4 sm:p-6 min-h-[420px]";
+
+    return `prose prose-neutral dark:prose-invert max-w-none focus:outline-none ${fontClass} ${sizeClass} ${paddingClass} ${className}`;
+  }, [fontSize, isAssamese, isFullScreen, className]);
 
   const dynamicPlaceholder =
     placeholder ||
@@ -85,7 +130,7 @@ export function TiptapEditor({
       Image.configure({
         inline: false,
         HTMLAttributes: {
-          class: "rounded-xl max-w-full h-auto my-4 shadow-md",
+          class: "rounded-none border border-border max-w-full h-auto my-4",
         },
       }),
       Placeholder.configure({
@@ -95,11 +140,7 @@ export function TiptapEditor({
     content: initialContent || "",
     editorProps: {
       attributes: {
-        class: `prose prose-neutral dark:prose-invert max-w-none focus:outline-none min-h-[350px] p-4 sm:p-6 ${
-          isAssamese
-            ? "font-assamese text-lg leading-relaxed"
-            : "font-sans text-base leading-relaxed"
-        } ${className}`,
+        class: getProseClasses(),
         lang: isAssamese ? "as" : "en",
         spellcheck: "false",
       },
@@ -203,28 +244,38 @@ export function TiptapEditor({
         json: ed.getJSON(),
         html: ed.getHTML(),
       });
+      const text = ed.getText();
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      const chars = text.length;
+      const readingTime = Math.max(1, Math.ceil(words / 200));
+      const paragraphs = text.split(/\n+/).filter(Boolean).length;
+      onStatsChange?.({ words, chars, readingTime, paragraphs });
+    },
+    onCreate: ({ editor: ed }) => {
+      const text = ed.getText();
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      const chars = text.length;
+      const readingTime = Math.max(1, Math.ceil(words / 200));
+      const paragraphs = text.split(/\n+/).filter(Boolean).length;
+      onStatsChange?.({ words, chars, readingTime, paragraphs });
     },
     immediatelyRender: false,
   });
 
-  // Update editor attributes and placeholder when language changes
+  // Update editor attributes and placeholder when language or font size changes
   useEffect(() => {
     if (editor) {
       editor.setOptions({
         editorProps: {
           attributes: {
-            class: `prose prose-neutral dark:prose-invert max-w-none focus:outline-none min-h-[350px] p-4 sm:p-6 ${
-              isAssamese
-                ? "font-assamese text-lg leading-relaxed"
-                : "font-sans text-base leading-relaxed"
-            } ${className}`,
+            class: getProseClasses(),
             lang: isAssamese ? "as" : "en",
             spellcheck: "false",
           },
         },
       });
     }
-  }, [editor, isAssamese, className]);
+  }, [editor, getProseClasses, isAssamese]);
 
   // Insert character or word at cursor
   const handleInsertChar = (char: string) => {
@@ -242,7 +293,14 @@ export function TiptapEditor({
   };
 
   return (
-    <div className="flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm focus-within:ring-2 focus-within:ring-ring/50 transition-all space-y-2">
+    <div
+      className={cn(
+        "flex flex-col transition-all",
+        isFullScreen
+          ? "border-0 shadow-none bg-transparent space-y-0"
+          : "rounded-none border border-border bg-card text-card-foreground shadow-none focus-within:ring-1 focus-within:ring-ring space-y-2"
+      )}
+    >
       <EditorToolbar
         editor={editor}
         onImageUpload={uploadFile}
@@ -253,17 +311,19 @@ export function TiptapEditor({
           setPhoneticEnabled(next);
           toast.info(
             next
-              ? "Assamese Phonetic IME Enabled (type 'namaskar' + Space)"
-              : "Phonetic IME Disabled"
+              ? "Assamese SMS Keyboard Enabled (type 'namaskar' + Space)"
+              : "SMS Keyboard Disabled"
           );
         }}
         onTogglePalette={() => setPaletteOpen(!paletteOpen)}
         isPaletteOpen={paletteOpen}
         onTransliterateContent={handleTransliterateContent}
+        isFullScreen={isFullScreen}
+        onToggleFullScreen={onToggleFullScreen}
       />
 
       {paletteOpen && (
-        <div className="px-3">
+        <div className={cn(isFullScreen ? "py-2" : "px-3")}>
           <AssameseKeyboardPalette
             isOpen={paletteOpen}
             onToggle={() => setPaletteOpen(!paletteOpen)}
@@ -272,7 +332,7 @@ export function TiptapEditor({
         </div>
       )}
 
-      <div className="min-h-[350px]">
+      <div className={isFullScreen ? "w-full" : "min-h-[500px]"}>
         <EditorContent editor={editor} />
       </div>
     </div>

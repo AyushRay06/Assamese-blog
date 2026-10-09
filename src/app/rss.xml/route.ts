@@ -2,15 +2,6 @@ import prisma from "@/lib/prisma";
 import { PostStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-function escapeXml(unsafe: string): string {
-  return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
 export async function GET() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -42,9 +33,9 @@ export async function GET() {
   const rssFeed = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Bilingual Notebook</title>
+    <title>Prof. Surajit Borkotokey | Academic Archive &amp; Blog</title>
     <link>${siteUrl}</link>
-    <description>A bilingual journal published in English and Assamese (অসমীয়া).</description>
+    <description>Mathematics, Cooperative Game Theory, and Bilingual Archive in English and Assamese (অসমীয়া).</description>
     <language>en-us</language>
     <atom:link href="${siteUrl}/rss.xml" rel="self" type="application/rss+xml"/>
     ${rssItemsXml}

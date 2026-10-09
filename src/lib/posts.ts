@@ -1,5 +1,6 @@
 import prisma from "./prisma";
 import { Language, PostStatus, Prisma } from "@prisma/client";
+import { unstable_cache } from "next/cache";
 
 export interface GetPublishedPostsOptions {
   language?: "EN" | "AS";
@@ -44,6 +45,27 @@ export async function getPublishedPosts({
     hasMore: page < totalPages,
   };
 }
+
+export const getCachedPublishedPosts = unstable_cache(
+  async (language?: "EN" | "AS", page: number = 1, limit: number = 12) => {
+    return getPublishedPosts({ language, page, limit });
+  },
+  ["published-posts-cache"],
+  { revalidate: 60, tags: ["posts"] }
+);
+
+export const getCachedPostCounts = unstable_cache(
+  async () => {
+    const [all, en, as] = await Promise.all([
+      prisma.post.count({ where: { status: PostStatus.PUBLISHED } }),
+      prisma.post.count({ where: { status: PostStatus.PUBLISHED, language: Language.EN } }),
+      prisma.post.count({ where: { status: PostStatus.PUBLISHED, language: Language.AS } }),
+    ]);
+    return { all, en, as };
+  },
+  ["published-counts-cache"],
+  { revalidate: 60, tags: ["posts"] }
+);
 
 export async function getPublishedPostBySlug(slug: string) {
   const post = await prisma.post.findUnique({

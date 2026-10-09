@@ -7,9 +7,10 @@ interface PaginationProps {
   currentPage: number;
   totalPages: number;
   lang?: string;
+  basePath?: string;
 }
 
-export function Pagination({ currentPage, totalPages, lang }: PaginationProps) {
+export function Pagination({ currentPage, totalPages, lang, basePath = "/blog" }: PaginationProps) {
   if (totalPages <= 1) return null;
 
   const buildUrl = (page: number) => {
@@ -17,7 +18,7 @@ export function Pagination({ currentPage, totalPages, lang }: PaginationProps) {
     if (lang && lang !== "ALL") params.set("lang", lang.toLowerCase());
     if (page > 1) params.set("page", page.toString());
     const query = params.toString();
-    return query ? `/?${query}` : "/";
+    return query ? `${basePath}?${query}` : basePath;
   };
 
   return (
