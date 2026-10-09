@@ -5,7 +5,7 @@ import { postSchema, PostInput } from "@/lib/validations";
 import { sanitizePostHtml } from "@/lib/sanitize";
 import { calculateReadingTime, LanguageCode } from "@/lib/languages";
 import { assertAdminAuthorized } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { PostStatus, Language } from "@prisma/client";
 
 function extractPlainText(html: string): string {
@@ -58,10 +58,14 @@ export async function createPostAction(data: PostInput) {
   });
 
   revalidatePath("/");
+  revalidatePath("/blog");
   revalidatePath(`/blog/${post.slug}`);
   revalidatePath("/admin");
   revalidatePath("/rss.xml");
   revalidatePath("/sitemap.xml");
+  try {
+    updateTag("posts");
+  } catch {}
 
   return { success: true, id: post.id, slug: post.slug };
 }
@@ -128,11 +132,15 @@ export async function updatePostAction(id: string, data: PostInput) {
   });
 
   revalidatePath("/");
+  revalidatePath("/blog");
   revalidatePath(`/blog/${currentPost.slug}`);
   revalidatePath(`/blog/${updated.slug}`);
   revalidatePath("/admin");
   revalidatePath("/rss.xml");
   revalidatePath("/sitemap.xml");
+  try {
+    updateTag("posts");
+  } catch {}
 
   return { success: true, id: updated.id, slug: updated.slug };
 }
@@ -148,10 +156,14 @@ export async function deletePostAction(id: string) {
   await prisma.post.delete({ where: { id } });
 
   revalidatePath("/");
+  revalidatePath("/blog");
   revalidatePath(`/blog/${post.slug}`);
   revalidatePath("/admin");
   revalidatePath("/rss.xml");
   revalidatePath("/sitemap.xml");
+  try {
+    updateTag("posts");
+  } catch {}
 
   return { success: true };
 }
@@ -178,10 +190,14 @@ export async function togglePostStatusAction(id: string) {
   });
 
   revalidatePath("/");
+  revalidatePath("/blog");
   revalidatePath(`/blog/${post.slug}`);
   revalidatePath("/admin");
   revalidatePath("/rss.xml");
   revalidatePath("/sitemap.xml");
+  try {
+    updateTag("posts");
+  } catch {}
 
   return { success: true, status: updated.status };
 }

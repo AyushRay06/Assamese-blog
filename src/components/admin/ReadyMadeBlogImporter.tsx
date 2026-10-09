@@ -426,6 +426,7 @@ export function ReadyMadeBlogImporter() {
                   src={coverImage}
                   alt="Cover Image"
                   fill
+                  unoptimized={Boolean(coverImage?.startsWith("data:"))}
                   className="object-cover"
                 />
                 <button

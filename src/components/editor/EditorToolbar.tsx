@@ -44,6 +44,8 @@ import {
   Sparkles,
   FileCode,
   Command,
+  RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
@@ -81,9 +83,11 @@ export function EditorToolbar({
 
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
+  const [localPreviewUrl, setLocalPreviewUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const directFileInputRef = useRef<HTMLInputElement>(null);
 
   if (!editor) return null;
 
@@ -111,21 +115,27 @@ export function EditorToolbar({
   // Image Handling
   const handleOpenImageDialog = () => {
     setImageUrl("");
+    setLocalPreviewUrl("");
     setImageAlt("");
     setImageDialogOpen(true);
   };
 
   const handleInsertImage = () => {
-    if (!imageUrl) {
+    const finalUrl = imageUrl || localPreviewUrl;
+    if (!finalUrl) {
       toast.error("Please provide an image URL or upload an image file");
       return;
     }
     editor
       .chain()
       .focus()
-      .setImage({ src: imageUrl, alt: imageAlt || "Post illustration" })
+      .setImage({ src: finalUrl, alt: imageAlt || "Post illustration" })
       .run();
     setImageDialogOpen(false);
+    setImageUrl("");
+    setLocalPreviewUrl("");
+    setImageAlt("");
+    toast.success("Image inserted into article body");
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,6 +146,9 @@ export function EditorToolbar({
       toast.error("Please upload an image file (JPEG, PNG, WebP, GIF, AVIF)");
       return;
     }
+
+    const localUrl = URL.createObjectURL(file);
+    setLocalPreviewUrl(localUrl);
 
     try {
       setIsUploading(true);
@@ -158,11 +171,58 @@ export function EditorToolbar({
       }
 
       setImageUrl(uploadedUrl);
-      toast.success("Image uploaded successfully!");
+      toast.success("Image uploaded! Ready to insert.");
     } catch (err) {
+      setLocalPreviewUrl("");
       toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file (JPEG, PNG, WebP, GIF, AVIF)");
+      return;
+    }
+
+    try {
+      toast.loading("Uploading image into body...", { id: "direct-image-upload" });
+      let uploadedUrl = "";
+      if (onImageUpload) {
+        uploadedUrl = await onImageUpload(file);
+      } else {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/admin/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to upload image");
+        }
+        const data = await res.json();
+        uploadedUrl = data.url;
+      }
+
+      editor
+        .chain()
+        .focus()
+        .setImage({ src: uploadedUrl, alt: file.name.replace(/\.[^/.]+$/, "") })
+        .run();
+
+      toast.success("Image inserted into article body!", { id: "direct-image-upload" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed", {
+        id: "direct-image-upload",
+      });
+    } finally {
+      if (directFileInputRef.current) directFileInputRef.current.value = "";
     }
   };
 
@@ -450,6 +510,15 @@ export function EditorToolbar({
             </Button>
           )}
 
+          {/* Quick Upload hidden input */}
+          <input
+            ref={directFileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+            onChange={handleDirectUpload}
+            className="hidden"
+          />
+
           <Button
             type="button"
             variant="ghost"
@@ -457,9 +526,21 @@ export function EditorToolbar({
             className="h-8 w-8 text-primary"
             onClick={handleOpenImageDialog}
             aria-label="Insert Image"
-            title="Insert or Upload Image"
+            title="Insert Image (Modal with Preview)"
           >
             <ImageIcon className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={() => directFileInputRef.current?.click()}
+            aria-label="Quick Upload Image"
+            title="Quick Upload Image into Body (1-Click)"
+          >
+            <Upload className="h-3.5 w-3.5" />
           </Button>
         </div>
 
@@ -643,14 +724,26 @@ export function EditorToolbar({
               />
             </div>
 
-            {imageUrl && (
-              <div className="relative aspect-video w-full overflow-hidden rounded-none border bg-muted">
+            {(imageUrl || localPreviewUrl) && (
+              <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={imageUrl}
+                  src={imageUrl || localPreviewUrl}
                   alt={imageAlt || "Preview"}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain bg-background/50"
                 />
+                {isUploading && (
+                  <div className="absolute inset-0 bg-background/80 backdrop-blur-xs flex flex-col items-center justify-center gap-1.5 z-10">
+                    <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-xs font-medium">Uploading image...</span>
+                  </div>
+                )}
+                {!isUploading && imageUrl && (
+                  <div className="absolute bottom-2 left-2 right-2 bg-background/90 backdrop-blur-xs px-2.5 py-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Upload complete &bull; Ready to insert</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -658,8 +751,13 @@ export function EditorToolbar({
             <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleInsertImage} disabled={!imageUrl || isUploading}>
-              Insert Image
+            <Button
+              onClick={handleInsertImage}
+              disabled={(!imageUrl && !localPreviewUrl) || isUploading}
+              className="gap-1.5"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Insert into Article</span>
             </Button>
           </DialogFooter>
         </DialogContent>

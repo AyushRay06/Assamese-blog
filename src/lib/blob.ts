@@ -18,9 +18,31 @@ export interface UploadResult {
 }
 
 /**
+ * Helper to discover Vercel Blob read/write token from process.env.
+ * Supports standard BLOB_READ_WRITE_TOKEN, VERCEL_BLOB_READ_WRITE_TOKEN,
+ * or any store-prefixed token like <STORE_NAME>_READ_WRITE_TOKEN.
+ */
+function findBlobToken(): string | undefined {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    return process.env.BLOB_READ_WRITE_TOKEN;
+  }
+  if (process.env.VERCEL_BLOB_READ_WRITE_TOKEN) {
+    return process.env.VERCEL_BLOB_READ_WRITE_TOKEN;
+  }
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.endsWith("_READ_WRITE_TOKEN") && value) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Storage adapter abstraction.
- * Uses Vercel Blob when BLOB_READ_WRITE_TOKEN is configured.
- * Falls back to local public uploads directory for local development.
+ * 1. Uses Vercel Blob if a Blob token is available in environment variables.
+ * 2. In local development, saves to public/uploads/posts.
+ * 3. In serverless or read-only filesystem environments (e.g. Vercel /var/task),
+ *    safely falls back to a base64 Data URL so uploads never fail with ENOENT /var/task/public.
  */
 export async function uploadImage(
   fileOrBuffer: Buffer | Blob | File,
@@ -43,24 +65,26 @@ export async function uploadImage(
     .slice(0, 30);
   const uniqueName = `posts/${cleanBase}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
 
+  const blobToken = findBlobToken();
+
   // If Vercel Blob token is configured, upload to Vercel Blob
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const blob = await put(uniqueName, fileOrBuffer, {
-      access: "public",
-      contentType,
-      addRandomSuffix: false,
-    });
-    return {
-      url: blob.url,
-      pathname: blob.pathname,
-    };
+  if (blobToken) {
+    try {
+      const blob = await put(uniqueName, fileOrBuffer, {
+        access: "public",
+        contentType,
+        addRandomSuffix: false,
+        token: blobToken,
+      });
+      return {
+        url: blob.url,
+        pathname: blob.pathname,
+      };
+    } catch (blobErr) {
+      console.warn("Vercel Blob upload failed, falling back to local or base64 storage:", blobErr);
+    }
   }
 
-  // Local development fallback: store in public/uploads
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "posts");
-  await fs.mkdir(uploadDir, { recursive: true });
-
-  const localFilePath = path.join(uploadDir, path.basename(uniqueName));
   const buffer =
     fileOrBuffer instanceof Buffer
       ? fileOrBuffer
@@ -70,10 +94,29 @@ export async function uploadImage(
     throw new Error("File exceeds maximum allowed size of 5 MB");
   }
 
-  await fs.writeFile(localFilePath, buffer);
+  // Local development fallback: store in public/uploads/posts
+  try {
+    const uploadDir = path.join(process.cwd(), "public", "uploads", "posts");
+    await fs.mkdir(uploadDir, { recursive: true });
 
-  return {
-    url: `/uploads/posts/${path.basename(uniqueName)}`,
-    pathname: uniqueName,
-  };
+    const localFilePath = path.join(uploadDir, path.basename(uniqueName));
+    await fs.writeFile(localFilePath, buffer);
+
+    return {
+      url: `/uploads/posts/${path.basename(uniqueName)}`,
+      pathname: uniqueName,
+    };
+  } catch (fsErr) {
+    // Serverless fallback: On environments like Vercel Lambda where /var/task is read-only,
+    // convert image to a base64 Data URL so the blog upload never throws ENOENT.
+    console.warn(
+      "Local filesystem is read-only (/var/task). Using base64 Data URL fallback for post image:",
+      fsErr
+    );
+    const dataUrl = `data:${contentType};base64,${buffer.toString("base64")}`;
+    return {
+      url: dataUrl,
+      pathname: uniqueName,
+    };
+  }
 }

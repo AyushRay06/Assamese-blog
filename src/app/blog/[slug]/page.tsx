@@ -188,6 +188,7 @@ export default async function SinglePostPage({ params }: PostPageProps) {
                 alt={post.title}
                 fill
                 priority
+                unoptimized={Boolean(post.coverImage?.startsWith("data:"))}
                 sizes="(max-width: 768px) 100vw, 800px"
                 className="object-cover"
               />

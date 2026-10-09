@@ -122,6 +122,7 @@ export function PostForm({ initialData }: PostFormProps) {
   // Cover image upload
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string>("");
 
   // Auto-generate slug when title changes (if not manually overridden)
   const handleTitleChange = (newTitle: string) => {
@@ -144,6 +145,14 @@ export function PostForm({ initialData }: PostFormProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file (JPEG, PNG, WebP, GIF, AVIF)");
+      return;
+    }
+
+    const localUrl = URL.createObjectURL(file);
+    setCoverPreviewUrl(localUrl);
+
     try {
       setIsUploadingCover(true);
       const formData = new FormData();
@@ -164,9 +173,11 @@ export function PostForm({ initialData }: PostFormProps) {
       setSaveStatus("unsaved");
       toast.success("Cover image uploaded");
     } catch (err) {
+      setCoverPreviewUrl("");
       toast.error(err instanceof Error ? err.message : "Cover upload failed");
     } finally {
       setIsUploadingCover(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -797,21 +808,29 @@ export function PostForm({ initialData }: PostFormProps) {
                 />
               </div>
 
-              {coverImage && (
+              {(coverImage || coverPreviewUrl) && (
                 <div className="relative aspect-[16/9] w-full overflow-hidden rounded-none border bg-muted">
                   <Image
-                    src={coverImage}
+                    src={coverImage || coverPreviewUrl}
                     alt="Cover preview"
                     fill
+                    unoptimized={Boolean((coverImage || coverPreviewUrl)?.startsWith("data:") || (coverImage || coverPreviewUrl)?.startsWith("blob:"))}
                     className="object-cover"
                   />
+                  {isUploadingCover && (
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-xs flex flex-col items-center justify-center gap-1.5 z-10">
+                      <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+                      <span className="text-[11px] font-medium text-foreground">Uploading cover image...</span>
+                    </div>
+                  )}
                   <Button
                     type="button"
                     variant="destructive"
                     size="sm"
-                    className="absolute top-2 right-2 h-7 px-2 text-xs"
+                    className="absolute top-2 right-2 h-7 px-2 text-xs z-20"
                     onClick={() => {
                       setCoverImage("");
+                      setCoverPreviewUrl("");
                       setSaveStatus("unsaved");
                     }}
                   >
@@ -1145,7 +1164,13 @@ export function PostForm({ initialData }: PostFormProps) {
               {/* Cover Image Banner (if set) or quick-add button */}
               {coverImage ? (
                 <div className="group relative mb-8 aspect-[21/9] sm:aspect-[24/9] w-full overflow-hidden rounded-xl border border-border/80 bg-muted shadow-xs">
-                  <Image src={coverImage} alt="Cover preview" fill className="object-cover" />
+                  <Image
+                    src={coverImage}
+                    alt="Cover preview"
+                    fill
+                    unoptimized={Boolean(coverImage?.startsWith("data:") || coverImage?.startsWith("blob:"))}
+                    className="object-cover"
+                  />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <Button
                       type="button"
@@ -1365,7 +1390,13 @@ export function PostForm({ initialData }: PostFormProps) {
                 <article className="rounded-xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 shadow-xs">
                   {coverImage && (
                     <div className="relative aspect-[21/9] w-full overflow-hidden rounded-lg bg-muted">
-                      <Image src={coverImage} alt="Cover preview" fill className="object-cover" />
+                      <Image
+                        src={coverImage}
+                        alt="Cover preview"
+                        fill
+                        unoptimized={Boolean(coverImage?.startsWith("data:") || coverImage?.startsWith("blob:"))}
+                        className="object-cover"
+                      />
                     </div>
                   )}
 
@@ -1426,7 +1457,13 @@ export function PostForm({ initialData }: PostFormProps) {
               <article className="rounded-2xl border border-border/80 bg-card p-6 sm:p-12 space-y-8 shadow-xs">
                 {coverImage && (
                   <div className="relative aspect-[21/9] w-full overflow-hidden rounded-xl bg-muted">
-                    <Image src={coverImage} alt="Cover preview" fill className="object-cover" />
+                    <Image
+                      src={coverImage}
+                      alt="Cover preview"
+                      fill
+                      unoptimized={Boolean(coverImage?.startsWith("data:") || coverImage?.startsWith("blob:"))}
+                      className="object-cover"
+                    />
                   </div>
                 )}
 
@@ -1517,7 +1554,13 @@ export function PostForm({ initialData }: PostFormProps) {
                   <Label className="text-xs font-semibold">Cover Image</Label>
                   {coverImage ? (
                     <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md border bg-muted">
-                      <Image src={coverImage} alt="Cover preview" fill className="object-cover" />
+                      <Image
+                        src={coverImage}
+                        alt="Cover preview"
+                        fill
+                        unoptimized={Boolean(coverImage?.startsWith("data:") || coverImage?.startsWith("blob:"))}
+                        className="object-cover"
+                      />
                       <Button
                         type="button"
                         variant="destructive"

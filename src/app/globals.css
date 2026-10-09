@@ -175,3 +175,20 @@
 .animate-marquee-reverse {
   animation: marquee-reverse 24s linear infinite;
 }
+
+/* Tiptap / ProseMirror editor images */
+.ProseMirror img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.5rem auto;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}

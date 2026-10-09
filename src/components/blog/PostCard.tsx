@@ -51,6 +51,7 @@ export function PostCard({ post, priority = false }: PostCardProps) {
             src={post.coverImage}
             alt={post.title}
             fill
+            unoptimized={Boolean(post.coverImage?.startsWith("data:"))}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             priority={priority}
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
