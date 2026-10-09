@@ -15,12 +15,14 @@ export function ContactSection() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [status, setStatus] = React.useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = React.useState("");
+  const [successNotice, setSuccessNotice] = React.useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setStatus("idle");
     setErrorMessage("");
+    setSuccessNotice("");
 
     try {
       const res = await fetch("/api/contact", {
@@ -36,8 +38,9 @@ export function ContactSection() {
       }
 
       setStatus("success");
+      setSuccessNotice(data.message || "Message delivered successfully.");
       setFormData({ name: "", email: "", subject: "", message: "" });
-      toast.success("Message delivered successfully.");
+      toast.success(data.message || "Message delivered successfully.");
     } catch (err: any) {
       console.error(err);
       setStatus("error");
@@ -87,7 +90,7 @@ export function ContactSection() {
                   <div className="text-xs leading-relaxed">
                     <p className="font-semibold text-sm">Message Delivered</p>
                     <p className="mt-0.5 text-muted-foreground">
-                      Your inquiry has been received and logged to the portal. Inquiries can also be viewed inside the Admin Portal.
+                      {successNotice || "Your inquiry has been received and logged to the portal. Inquiries can also be viewed inside the Admin Portal."}
                     </p>
                   </div>
                 </div>

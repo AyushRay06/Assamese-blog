@@ -82,10 +82,14 @@ export async function POST(request: Request) {
       // We don't fail the user request since the inquiry is already safely saved in DB
     }
 
+    const messageNotice = emailSent
+      ? "Your message has been received and emailed to the inbox."
+      : "Your message has been received and recorded to the portal.";
+
     return NextResponse.json(
       {
         success: true,
-        message: "Your message has been sent successfully. Thank you for reaching out.",
+        message: messageNotice,
         id: savedRecord?.id || "inquiry-logged",
         emailSent,
       },

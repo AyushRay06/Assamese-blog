@@ -49,17 +49,28 @@ ${message}
   `;
 
   // If SMTP credentials are configured, send real email via nodemailer
-  if (smtpHost && smtpUser && smtpPass) {
+  if (smtpUser && smtpPass) {
     try {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
+      const cleanPass = smtpPass.replace(/\s+/g, "");
+      const isGmail = (smtpHost && smtpHost.includes("gmail")) || smtpUser.includes("@gmail.com");
+
+      const transporter = isGmail
+        ? nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+              user: smtpUser,
+              pass: cleanPass,
+            },
+          })
+        : nodemailer.createTransport({
+            host: smtpHost || "smtp.gmail.com",
+            port: smtpPort,
+            secure: smtpPort === 465,
+            auth: {
+              user: smtpUser,
+              pass: cleanPass,
+            },
+          });
 
       const info = await transporter.sendMail({
         from: smtpFrom,
@@ -70,6 +81,7 @@ ${message}
         html: emailHtml,
       });
 
+      console.log(`[Email Service] Live email dispatched successfully to ${receiverEmail}. Message ID: ${info.messageId}`);
       return { sent: true, messageId: info.messageId };
     } catch (err: any) {
       console.error("[Email Service Error] Failed to send email via SMTP:", err);
@@ -77,19 +89,20 @@ ${message}
     }
   }
 
-  // Fallback: When SMTP is not yet configured, log to console for development verification
-  console.log(`
+  // When SMTP is not configured: log clearly that live dispatch is inactive
+  console.warn(`
 ══════════════════════════════════════════════════════════════════
-[CONTACT FORM SIMULATED EMAIL DISPATCH]
+[CONTACT FORM: NO SMTP CONFIGURED — LIVE EMAIL NOT SENT]
 To: ${receiverEmail}
 From: "${name}" <${email}>
 Subject: ${emailSubject}
 ------------------------------------------------------------------
 ${message}
 ══════════════════════════════════════════════════════════════════
-Notice: To send live emails over the internet, add SMTP credentials to .env (e.g. standard Gmail App Password or custom domain SMTP).
-The message has been securely recorded in the PostgreSQL database.
+Notice: To receive live emails in your inbox, set SMTP_USER and SMTP_PASS in .env.
+(For Gmail: use your Gmail address and a 16-character Google App Password).
+The inquiry was saved safely in the PostgreSQL database.
   `);
 
-  return { sent: true, messageId: "simulated-dev-dispatch" };
+  return { sent: false, error: "SMTP credentials (SMTP_USER and SMTP_PASS) not configured" };
 }
