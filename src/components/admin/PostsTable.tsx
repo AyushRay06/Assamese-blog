@@ -70,7 +70,11 @@ export function PostsTable({ posts }: PostsTableProps) {
 
     startTransition(async () => {
       try {
-        await deletePostAction(deleteId);
+        const result = await deletePostAction(deleteId);
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
         toast.success("Post deleted successfully");
         router.refresh();
       } catch (err) {
@@ -85,6 +89,10 @@ export function PostsTable({ posts }: PostsTableProps) {
     startTransition(async () => {
       try {
         const result = await togglePostStatusAction(id);
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
         toast.success(
           result.status === "PUBLISHED" ? "Post published" : "Post moved to drafts"
         );

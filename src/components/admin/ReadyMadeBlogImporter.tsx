@@ -246,6 +246,10 @@ export function ReadyMadeBlogImporter() {
         };
 
         const result = await createPostAction(payload);
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
         toast.success(
           targetStatus === "PUBLISHED"
             ? "Ready-made blog published successfully!"
@@ -253,8 +257,8 @@ export function ReadyMadeBlogImporter() {
         );
         router.push("/admin");
         router.refresh();
-      } catch (err: any) {
-        toast.error(err.message || "Failed to publish blog post");
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : "Failed to publish blog post");
       }
     });
   };

@@ -17,8 +17,16 @@ export const postSchema = z.object({
     .optional(),
   coverImage: z
     .string()
-    .url("Cover image must be a valid URL")
-    .or(z.literal(""))
+    .refine(
+      (val) =>
+        !val ||
+        val === "" ||
+        val.startsWith("http://") ||
+        val.startsWith("https://") ||
+        val.startsWith("data:") ||
+        val.startsWith("/"),
+      { message: "Cover image must be a valid URL, path, or image data" }
+    )
     .nullable()
     .optional(),
   content: z.any().refine((val) => val && typeof val === "object", {

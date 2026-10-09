@@ -225,7 +225,19 @@ export function PostForm({ initialData }: PostFormProps) {
         const payload = buildPayload(targetStatus);
 
         if (isEditing && initialData?.id) {
-          await updatePostAction(initialData.id, payload);
+          const result = await updatePostAction(initialData.id, payload);
+          if (!result.success) {
+            setSaveStatus("unsaved");
+            toast.error(result.error);
+            if (
+              result.error.toLowerCase().includes("log in") ||
+              result.error.toLowerCase().includes("session expired") ||
+              result.error.toLowerCase().includes("unauthorized")
+            ) {
+              router.push("/admin/login");
+            }
+            return;
+          }
           toast.success(
             targetStatus === "PUBLISHED"
               ? "Post updated and published!"
@@ -233,6 +245,18 @@ export function PostForm({ initialData }: PostFormProps) {
           );
         } else {
           const result = await createPostAction(payload);
+          if (!result.success) {
+            setSaveStatus("unsaved");
+            toast.error(result.error);
+            if (
+              result.error.toLowerCase().includes("log in") ||
+              result.error.toLowerCase().includes("session expired") ||
+              result.error.toLowerCase().includes("unauthorized")
+            ) {
+              router.push("/admin/login");
+            }
+            return;
+          }
           toast.success(
             targetStatus === "PUBLISHED"
               ? "Post published successfully!"
@@ -271,8 +295,12 @@ export function PostForm({ initialData }: PostFormProps) {
       try {
         setSaveStatus("saving");
         const payload = buildPayload("DRAFT");
-        await updatePostAction(initialData.id!, payload);
-        setSaveStatus("saved");
+        const res = await updatePostAction(initialData.id!, payload);
+        if (res.success) {
+          setSaveStatus("saved");
+        } else {
+          setSaveStatus("unsaved");
+        }
       } catch {
         setSaveStatus("unsaved");
       }
