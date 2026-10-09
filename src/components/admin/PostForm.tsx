@@ -245,13 +245,16 @@ export function PostForm({ initialData }: PostFormProps) {
           );
         } else {
           const result = await createPostAction(payload);
-          if (!result.success) {
+          if (!result.success || !result.id) {
             setSaveStatus("unsaved");
-            toast.error(result.error);
+            const errorMsg =
+              ("error" in result && result.error) ||
+              "Failed to create post. Please check required fields and try again.";
+            toast.error(errorMsg);
             if (
-              result.error.toLowerCase().includes("log in") ||
-              result.error.toLowerCase().includes("session expired") ||
-              result.error.toLowerCase().includes("unauthorized")
+              errorMsg.toLowerCase().includes("log in") ||
+              errorMsg.toLowerCase().includes("session expired") ||
+              errorMsg.toLowerCase().includes("unauthorized")
             ) {
               router.push("/admin/login");
             }
@@ -262,7 +265,15 @@ export function PostForm({ initialData }: PostFormProps) {
               ? "Post published successfully!"
               : "Draft saved successfully!"
           );
-          router.push(`/admin/posts/${result.id}/edit`);
+          setStatus(targetStatus);
+          setSaveStatus("saved");
+          if (targetStatus === "PUBLISHED") {
+            router.push("/admin");
+          } else {
+            router.push(`/admin/posts/${result.id}/edit`);
+          }
+          router.refresh();
+          return;
         }
         setStatus(targetStatus);
         setSaveStatus("saved");

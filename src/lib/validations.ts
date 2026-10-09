@@ -8,8 +8,16 @@ export const postSchema = z.object({
   slug: z
     .string()
     .min(1, "Slug is required")
-    .max(100, "Slug cannot exceed 100 characters")
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
+    .max(120, "Slug cannot exceed 120 characters")
+    .transform((val) => {
+      const cleaned = val
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      return cleaned || `post-${Date.now()}`;
+    }),
   excerpt: z
     .string()
     .max(500, "Excerpt cannot exceed 500 characters")
@@ -36,7 +44,7 @@ export const postSchema = z.object({
   language: z.enum(["EN", "AS"]).default("EN"),
   status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
   publishedAt: z
-    .union([z.string().datetime(), z.date()])
+    .union([z.string(), z.date()])
     .nullable()
     .optional(),
   tags: z.array(z.string().trim().min(1).max(50)).default([]),

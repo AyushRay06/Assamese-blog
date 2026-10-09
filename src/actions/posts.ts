@@ -37,15 +37,21 @@ export async function createPostAction(
   const validated = parseResult.data;
 
   try {
-    // Check slug uniqueness
+    // Check slug uniqueness and deduplicate automatically if exists
+    let finalSlug = validated.slug;
     const existing = await prisma.post.findUnique({
-      where: { slug: validated.slug },
+      where: { slug: finalSlug },
     });
     if (existing) {
-      return {
-        success: false,
-        error: `A post with slug "${validated.slug}" already exists. Please choose a different title or slug.`,
-      };
+      let counter = 2;
+      while (
+        await prisma.post.findUnique({
+          where: { slug: `${validated.slug}-${counter}` },
+        })
+      ) {
+        counter++;
+      }
+      finalSlug = `${validated.slug}-${counter}`;
     }
 
     const sanitizedHtml = sanitizePostHtml(validated.contentHtml);
@@ -62,7 +68,7 @@ export async function createPostAction(
     const post = await prisma.post.create({
       data: {
         title: validated.title,
-        slug: validated.slug,
+        slug: finalSlug,
         excerpt: validated.excerpt || null,
         coverImage: validated.coverImage || null,
         content: validated.content as object,
