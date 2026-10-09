@@ -13,7 +13,7 @@ export async function sendContactNotificationEmail({
   subject,
   message,
 }: SendContactEmailParams): Promise<{ sent: boolean; messageId?: string; error?: string }> {
-  const receiverEmail = process.env.CONTACT_RECEIVER_EMAIL || "topg270673@therategmail.com";
+  const receiverEmail = process.env.CONTACT_RECEIVER_EMAIL || "topg270673@gmail.com";
   const smtpHost = process.env.SMTP_HOST;
   const smtpPort = parseInt(process.env.SMTP_PORT || "587", 10);
   const smtpUser = process.env.SMTP_USER;
