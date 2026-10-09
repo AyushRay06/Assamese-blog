@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { compressImageClient } from "@/lib/image-compression";
 import { generateSlug } from "@/lib/slug";
 import { transliterateTextToAssamese } from "@/lib/assamese-translit";
 import { PostInput } from "@/lib/validations";
@@ -140,23 +141,32 @@ export function PostForm({ initialData }: PostFormProps) {
     toast.info(`Generated slug: ${generated}`);
   };
 
-  // Cover image file change handler
+  // Cover image file change handler with client-side compression
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
-    if (!file.type.startsWith("image/")) {
+    if (!rawFile.type.startsWith("image/")) {
       toast.error("Please upload an image file (JPEG, PNG, WebP, GIF, AVIF)");
       return;
     }
 
-    const localUrl = URL.createObjectURL(file);
-    setCoverPreviewUrl(localUrl);
-
     try {
       setIsUploadingCover(true);
+
+      // 1. Instant client-side compression to lightweight WebP (< 300KB)
+      const { file: compressedFile, dataUrl } = await compressImageClient(rawFile);
+
+      // 2. Set instant preview and fallback immediately so it is NEVER lost
+      if (dataUrl) {
+        setCoverPreviewUrl(dataUrl);
+        setCoverImage(dataUrl);
+        setSaveStatus("unsaved");
+      }
+
+      // 3. Upload the compressed file to server / Vercel Blob
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressedFile);
 
       const res = await fetch("/api/admin/upload", {
         method: "POST",
@@ -169,12 +179,20 @@ export function PostForm({ initialData }: PostFormProps) {
       }
 
       const data = await res.json();
-      setCoverImage(data.url);
-      setSaveStatus("unsaved");
-      toast.success("Cover image uploaded");
+      if (data?.url) {
+        setCoverImage(data.url);
+        setCoverPreviewUrl(data.url);
+        setSaveStatus("unsaved");
+        toast.success("Cover image uploaded and optimized!");
+      }
     } catch (err) {
-      setCoverPreviewUrl("");
-      toast.error(err instanceof Error ? err.message : "Cover upload failed");
+      console.warn("Server upload notice:", err);
+      // Keep the compressed dataUrl fallback intact if already set
+      if (!coverImage && !coverPreviewUrl) {
+        toast.error(err instanceof Error ? err.message : "Cover upload failed");
+      } else {
+        toast.info("Image compressed and attached to post");
+      }
     } finally {
       setIsUploadingCover(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -195,11 +213,13 @@ export function PostForm({ initialData }: PostFormProps) {
       .map((t) => t.trim())
       .filter(Boolean);
 
+    const activeCover = coverImage.trim() || coverPreviewUrl.trim() || null;
+
     return {
       title,
-      slug: slug || generateSlug(title),
+      slug: (slug.trim() || generateSlug(title)),
       excerpt: excerpt.trim() || null,
-      coverImage: coverImage.trim() || null,
+      coverImage: activeCover,
       content: contentJson,
       contentHtml: contentHtml,
       language,
@@ -216,6 +236,11 @@ export function PostForm({ initialData }: PostFormProps) {
   const handleSubmit = async (targetStatus: "DRAFT" | "PUBLISHED") => {
     if (!title.trim()) {
       toast.error("Please enter a title for the post");
+      return;
+    }
+
+    if (isUploadingCover) {
+      toast.error("Please wait a moment for the cover image to finish uploading");
       return;
     }
 
@@ -462,7 +487,7 @@ export function PostForm({ initialData }: PostFormProps) {
             type="button"
             variant="outline"
             onClick={() => handleSubmit("DRAFT")}
-            disabled={isPending}
+            disabled={isPending || isUploadingCover}
           >
             Save Draft
           </Button>
@@ -470,11 +495,20 @@ export function PostForm({ initialData }: PostFormProps) {
           <Button
             type="button"
             onClick={() => handleSubmit("PUBLISHED")}
-            disabled={isPending}
+            disabled={isPending || isUploadingCover}
             className="bg-primary hover:bg-primary/90"
           >
-            <Sparkles className="mr-1.5 h-4 w-4" />
-            {status === "PUBLISHED" ? "Update Published Post" : "Publish Post"}
+            {isUploadingCover ? (
+              <>
+                <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
+                Uploading Image...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                {status === "PUBLISHED" ? "Update Published Post" : "Publish Post"}
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -840,7 +874,9 @@ export function PostForm({ initialData }: PostFormProps) {
                   placeholder="https://..."
                   value={coverImage}
                   onChange={(e) => {
-                    setCoverImage(e.target.value);
+                    const val = e.target.value.trim();
+                    setCoverImage(val);
+                    setCoverPreviewUrl(val);
                     setSaveStatus("unsaved");
                   }}
                   className="text-xs"
@@ -1142,7 +1178,7 @@ export function PostForm({ initialData }: PostFormProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={isPending}
+                disabled={isPending || isUploadingCover}
                 onClick={() => handleSubmit("DRAFT")}
                 className="h-8 text-xs font-mono hidden sm:inline-flex"
                 title="Save Draft (⌘S)"
@@ -1154,12 +1190,21 @@ export function PostForm({ initialData }: PostFormProps) {
               <Button
                 type="button"
                 size="sm"
-                disabled={isPending}
+                disabled={isPending || isUploadingCover}
                 onClick={() => handleSubmit("PUBLISHED")}
                 className="h-8 text-xs font-medium px-3 sm:px-4 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs"
               >
-                <Sparkles className="mr-1 h-3.5 w-3.5" />
-                <span>{status === "PUBLISHED" ? "Update" : "Publish"}</span>
+                {isUploadingCover ? (
+                  <>
+                    <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-1 h-3.5 w-3.5" />
+                    <span>{status === "PUBLISHED" ? "Update" : "Publish"}</span>
+                  </>
+                )}
               </Button>
             </div>
           </header>
@@ -1637,7 +1682,9 @@ export function PostForm({ initialData }: PostFormProps) {
                       placeholder="https://images.unsplash.com/..."
                       value={coverImage}
                       onChange={(e) => {
-                        setCoverImage(e.target.value);
+                        const val = e.target.value.trim();
+                        setCoverImage(val);
+                        setCoverPreviewUrl(val);
                         setSaveStatus("unsaved");
                       }}
                       className="text-xs"

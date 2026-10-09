@@ -4,6 +4,7 @@ import React, { useState, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { generateSlug } from "@/lib/slug";
+import { compressImageClient } from "@/lib/image-compression";
 import { createPostAction } from "@/actions/posts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,14 +63,22 @@ export function ReadyMadeBlogImporter() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle Cover Image Upload
+  // Handle Cover Image Upload with Client-Side Compression
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
     try {
       setIsUploadingCover(true);
+
+      // Instant client-side compression
+      const { file: compressedFile, dataUrl } = await compressImageClient(rawFile);
+      if (dataUrl) {
+        setCoverImage(dataUrl);
+      }
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressedFile);
 
       const res = await fetch("/api/admin/upload", {
         method: "POST",
@@ -82,16 +91,22 @@ export function ReadyMadeBlogImporter() {
       }
 
       const data = await res.json();
-      setCoverImage(data.url);
-      toast.success("Cover image uploaded successfully");
+      if (data?.url) {
+        setCoverImage(data.url);
+        toast.success("Cover image uploaded and optimized");
+      }
     } catch (err: any) {
-      toast.error(err.message || "Failed to upload cover image");
+      if (!coverImage) {
+        toast.error(err.message || "Failed to upload cover image");
+      } else {
+        toast.info("Image compressed and attached");
+      }
     } finally {
       setIsUploadingCover(false);
     }
   };
 
-  // Handle In-Article Images Upload
+  // Handle In-Article Images Upload with Client-Side Compression
   const handleArticleImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -100,10 +115,12 @@ export function ReadyMadeBlogImporter() {
     let count = 0;
 
     for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+      const rawFile = files[i];
       try {
+        const { file: compressedFile, dataUrl } = await compressImageClient(rawFile);
+
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", compressedFile);
 
         const res = await fetch("/api/admin/upload", {
           method: "POST",
@@ -116,14 +133,24 @@ export function ReadyMadeBlogImporter() {
             ...prev,
             {
               id: Math.random().toString(36).substring(2, 9),
-              name: file.name,
-              url: data.url,
+              name: rawFile.name,
+              url: data.url || dataUrl,
+            },
+          ]);
+          count++;
+        } else if (dataUrl) {
+          setInArticleImages((prev) => [
+            ...prev,
+            {
+              id: Math.random().toString(36).substring(2, 9),
+              name: rawFile.name,
+              url: dataUrl,
             },
           ]);
           count++;
         }
       } catch (err) {
-        console.error("Failed to upload image:", file.name, err);
+        console.error("Failed to upload image:", rawFile.name, err);
       }
     }
 
@@ -197,6 +224,11 @@ export function ReadyMadeBlogImporter() {
 
     if (!content.trim()) {
       toast.error("Please enter or paste the content for the blog post");
+      return;
+    }
+
+    if (isUploadingCover) {
+      toast.error("Please wait a moment for the cover image to finish uploading");
       return;
     }
 
@@ -587,7 +619,7 @@ To insert images, use:
           <Button
             type="button"
             variant="outline"
-            disabled={isPending}
+            disabled={isPending || isUploadingCover}
             onClick={() => handleSubmit("DRAFT")}
             className="text-xs font-mono"
           >
@@ -596,12 +628,18 @@ To insert images, use:
 
           <Button
             type="button"
-            disabled={isPending}
+            disabled={isPending || isUploadingCover}
             onClick={() => handleSubmit("PUBLISHED")}
             className="text-xs font-mono gap-1.5 bg-foreground text-background hover:bg-foreground/90 font-medium px-5"
           >
-            <span>{isPending ? "Publishing..." : "Publish Blog Now"}</span>
-            <ArrowRight className="h-3.5 w-3.5" />
+            {isUploadingCover ? (
+              <span>Uploading cover image...</span>
+            ) : (
+              <>
+                <span>{isPending ? "Publishing..." : "Publish Blog Now"}</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </>
+            )}
           </Button>
         </div>
       </div>

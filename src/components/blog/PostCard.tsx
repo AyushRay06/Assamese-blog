@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import { SUPPORTED_LANGUAGES } from "@/lib/languages";
+import { BlogCoverImage } from "./BlogCoverImage";
 
 interface PostCardProps {
   post: {
@@ -44,28 +44,18 @@ export function PostCard({ post, priority = false }: PostCardProps) {
       <Link
         href={`/blog/${post.slug}`}
         prefetch={true}
-        className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-border/70 bg-muted/20 transition-all duration-300 group-hover:border-foreground/40 group-hover:shadow-sm"
+        className="relative block group-hover:shadow-sm"
       >
-        {post.coverImage ? (
-          <Image
-            src={post.coverImage}
-            alt={post.title}
-            fill
-            unoptimized={Boolean(post.coverImage?.startsWith("data:"))}
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            priority={priority}
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10">
-            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground/60">
-              {isAssamese ? "অসমীয়া নিবন্ধ" : "Essay"}
-            </span>
-          </div>
-        )}
+        <BlogCoverImage
+          src={post.coverImage}
+          alt={post.title}
+          isAssamese={isAssamese}
+          priority={priority}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        />
 
         {/* Minimal Language Tag Badge */}
-        <div className="absolute top-3 left-3">
+        <div className="absolute top-3 left-3 z-10">
           <span className="inline-flex items-center rounded-full bg-background/90 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-mono font-medium text-foreground border border-border/60 shadow-xs">
             {langConfig.nativeName}
           </span>

@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
-        { error: "File size exceeds 5 MB limit" },
+        { error: "File size exceeds 10 MB limit" },
         { status: 400 }
       );
     }

@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { type Editor } from "@tiptap/react";
+import { compressImageClient } from "@/lib/image-compression";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -152,29 +153,42 @@ export function EditorToolbar({
 
     try {
       setIsUploading(true);
+      const { file: compressedFile, dataUrl } = await compressImageClient(file);
+      if (dataUrl) {
+        setLocalPreviewUrl(dataUrl);
+        setImageUrl(dataUrl);
+      }
+
       let uploadedUrl = "";
       if (onImageUpload) {
-        uploadedUrl = await onImageUpload(file);
+        uploadedUrl = await onImageUpload(compressedFile);
       } else {
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", compressedFile);
         const res = await fetch("/api/admin/upload", {
           method: "POST",
           body: formData,
         });
-        if (!res.ok) {
+        if (res.ok) {
+          const data = await res.json();
+          uploadedUrl = data.url;
+        } else if (dataUrl) {
+          uploadedUrl = dataUrl;
+        } else {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || "Failed to upload image");
         }
-        const data = await res.json();
-        uploadedUrl = data.url;
       }
 
-      setImageUrl(uploadedUrl);
+      setImageUrl(uploadedUrl || dataUrl);
       toast.success("Image uploaded! Ready to insert.");
     } catch (err) {
-      setLocalPreviewUrl("");
-      toast.error(err instanceof Error ? err.message : "Upload failed");
+      if (!imageUrl && !localPreviewUrl) {
+        setLocalPreviewUrl("");
+        toast.error(err instanceof Error ? err.message : "Upload failed");
+      } else {
+        toast.info("Image compressed and ready");
+      }
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -182,38 +196,44 @@ export function EditorToolbar({
   };
 
   const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
-    if (!file.type.startsWith("image/")) {
+    if (!rawFile.type.startsWith("image/")) {
       toast.error("Please upload an image file (JPEG, PNG, WebP, GIF, AVIF)");
       return;
     }
 
     try {
-      toast.loading("Uploading image into body...", { id: "direct-image-upload" });
+      toast.loading("Optimizing and inserting image...", { id: "direct-image-upload" });
+      const { file: compressedFile, dataUrl } = await compressImageClient(rawFile);
+
       let uploadedUrl = "";
       if (onImageUpload) {
-        uploadedUrl = await onImageUpload(file);
+        uploadedUrl = await onImageUpload(compressedFile);
       } else {
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", compressedFile);
         const res = await fetch("/api/admin/upload", {
           method: "POST",
           body: formData,
         });
-        if (!res.ok) {
+        if (res.ok) {
+          const data = await res.json();
+          uploadedUrl = data.url;
+        } else if (dataUrl) {
+          uploadedUrl = dataUrl;
+        } else {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || "Failed to upload image");
         }
-        const data = await res.json();
-        uploadedUrl = data.url;
       }
 
+      const finalSrc = uploadedUrl || dataUrl;
       editor
         .chain()
         .focus()
-        .setImage({ src: uploadedUrl, alt: file.name.replace(/\.[^/.]+$/, "") })
+        .setImage({ src: finalSrc, alt: rawFile.name.replace(/\.[^/.]+$/, "") })
         .run();
 
       toast.success("Image inserted into article body!", { id: "direct-image-upload" });

@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getPublishedPostBySlug } from "@/lib/posts";
@@ -7,6 +6,7 @@ import { SUPPORTED_LANGUAGES, LanguageCode } from "@/lib/languages";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { PostContent } from "@/components/blog/PostContent";
+import { BlogCoverImage } from "@/components/blog/BlogCoverImage";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, ArrowLeft } from "lucide-react";
 import prisma from "@/lib/prisma";
@@ -182,14 +182,14 @@ export default async function SinglePostPage({ params }: PostPageProps) {
 
           {/* Cover Image */}
           {post.coverImage && (
-            <div className="relative mb-12 aspect-[16/9] w-full overflow-hidden rounded-none border border-border bg-muted">
-              <Image
+            <div className="mb-12">
+              <BlogCoverImage
                 src={post.coverImage}
                 alt={post.title}
-                fill
-                priority
-                unoptimized={Boolean(post.coverImage?.startsWith("data:"))}
+                isAssamese={isAssamese}
+                priority={true}
                 sizes="(max-width: 768px) 100vw, 800px"
+                aspectClass="aspect-[16/9]"
                 className="object-cover"
               />
             </div>
