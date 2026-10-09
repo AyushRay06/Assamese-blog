@@ -17,11 +17,19 @@ interface PostPageProps {
 }
 
 export async function generateStaticParams() {
-  const posts = await prisma.post.findMany({
-    where: { status: PostStatus.PUBLISHED },
-    select: { slug: true },
-  });
-  return posts.map((post) => ({ slug: post.slug }));
+  if (!process.env.DATABASE_URL) {
+    return [];
+  }
+  try {
+    const posts = await prisma.post.findMany({
+      where: { status: PostStatus.PUBLISHED },
+      select: { slug: true },
+    });
+    return posts.map((post) => ({ slug: post.slug }));
+  } catch (err) {
+    console.warn("generateStaticParams: unable to fetch posts at build time, using dynamic fallback:", err);
+    return [];
+  }
 }
 
 export async function generateMetadata({

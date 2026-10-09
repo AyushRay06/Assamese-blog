@@ -22,17 +22,28 @@ interface AdminDashboardProps {
 export default async function AdminDashboard({ searchParams }: AdminDashboardProps) {
   const params = await searchParams;
 
-  const [posts, contactMessages] = await Promise.all([
-    getAllPostsAdmin({
-      search: params.search,
-      status: params.status,
-      language: params.language,
-    }),
-    prisma.contactMessage.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    }),
-  ]);
+  let posts: any[] = [];
+  let contactMessages: any[] = [];
+
+  if (process.env.DATABASE_URL) {
+    try {
+      const [fetchedPosts, fetchedMessages] = await Promise.all([
+        getAllPostsAdmin({
+          search: params.search,
+          status: params.status,
+          language: params.language,
+        }),
+        prisma.contactMessage.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 50,
+        }),
+      ]);
+      posts = fetchedPosts;
+      contactMessages = fetchedMessages;
+    } catch (err) {
+      console.warn("Admin dashboard database error:", err);
+    }
+  }
 
   const totalPosts = posts.length;
   const publishedCount = posts.filter((p) => p.status === "PUBLISHED").length;
