@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/session";
 
 function timingSafeEqualStr(a: string, b: string): boolean {
   if (a.length !== b.length) {
@@ -12,55 +13,90 @@ function timingSafeEqualStr(a: string, b: string): boolean {
   return result === 0;
 }
 
-export function middleware(request: NextRequest) {
+function verifyBasicAuthEdge(authHeader: string | null): boolean {
+  if (!authHeader || !authHeader.startsWith("Basic ")) {
+    return false;
+  }
+
+  try {
+    const base64Credentials = authHeader.split(" ")[1];
+    const decoded = atob(base64Credentials);
+    const [user, ...passParts] = decoded.split(":");
+    const pass = passParts.join(":");
+    const expectedUser = process.env.ADMIN_USERNAME;
+    const expectedPass = process.env.ADMIN_PASSWORD;
+
+    if (!expectedUser || !expectedPass) {
+      return false;
+    }
+
+    return (
+      user !== undefined &&
+      pass !== undefined &&
+      timingSafeEqualStr(user, expectedUser) &&
+      timingSafeEqualStr(pass, expectedPass)
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Guard admin pages and admin API routes
-  const isAdminRoute =
-    pathname === "/admin" ||
-    pathname.startsWith("/admin/") ||
-    pathname.startsWith("/api/admin");
-
-  if (!isAdminRoute) {
+  // 1. Allow login/logout API endpoints without authentication
+  if (pathname === "/api/admin/login" || pathname === "/api/admin/logout") {
     return NextResponse.next();
   }
 
+  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isAdminApi = pathname.startsWith("/api/admin");
+
+  if (!isAdminPage && !isAdminApi) {
+    return NextResponse.next();
+  }
+
+  // 2. Check authentication via session cookie or Basic Auth header
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const authHeader = request.headers.get("authorization");
-  const expectedUser = process.env.ADMIN_USERNAME;
-  const expectedPass = process.env.ADMIN_PASSWORD;
 
-  if (!expectedUser || !expectedPass) {
-    console.error("ADMIN_USERNAME or ADMIN_PASSWORD is not set in environment.");
-    return new NextResponse("Server configuration error", { status: 500 });
-  }
+  const isAuthenticated =
+    (sessionCookie ? await verifySessionToken(sessionCookie) : false) ||
+    verifyBasicAuthEdge(authHeader);
 
-  if (authHeader && authHeader.startsWith("Basic ")) {
-    try {
-      const base64Credentials = authHeader.split(" ")[1];
-      // Decode base64 in edge-compatible standard
-      const decoded = atob(base64Credentials);
-      const [user, ...passParts] = decoded.split(":");
-      const pass = passParts.join(":");
-
-      if (
-        user !== undefined &&
-        pass !== undefined &&
-        timingSafeEqualStr(user, expectedUser) &&
-        timingSafeEqualStr(pass, expectedPass)
-      ) {
-        return NextResponse.next();
-      }
-    } catch {
-      // Invalid format falls through to 401
+  // 3. Handle login page (/admin/login)
+  if (pathname === "/admin/login") {
+    if (isAuthenticated) {
+      // If already logged in, redirect to admin dashboard
+      return NextResponse.redirect(new URL("/admin", request.url));
     }
+    return NextResponse.next();
   }
 
-  return new NextResponse("Authentication required", {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": 'Basic realm="Admin Area", charset="UTF-8"',
-    },
-  });
+  // 4. Guard admin pages - redirect to login page (no browser pop-up prompt!)
+  if (isAdminPage) {
+    if (isAuthenticated) {
+      return NextResponse.next();
+    }
+    const loginUrl = new URL("/admin/login", request.url);
+    if (pathname !== "/admin") {
+      loginUrl.searchParams.set("callbackUrl", pathname);
+    }
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // 5. Guard admin API routes - return 401 JSON without WWW-Authenticate header
+  if (isAdminApi) {
+    if (isAuthenticated) {
+      return NextResponse.next();
+    }
+    return NextResponse.json(
+      { error: "Unauthorized: Admin session required" },
+      { status: 401 }
+    );
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

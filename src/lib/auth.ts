@@ -1,5 +1,6 @@
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import crypto from "crypto";
+import { verifySessionToken, SESSION_COOKIE_NAME } from "./session";
 
 /**
  * Constant-time string comparison to prevent timing attacks.
@@ -57,6 +58,17 @@ export function verifyBasicAuthHeader(authHeader: string | null | undefined): bo
  * Throws an error or returns false if unauthorized.
  */
 export async function assertAdminAuthorized(): Promise<void> {
+  // Check cookie session first
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    if (sessionCookie && (await verifySessionToken(sessionCookie))) {
+      return;
+    }
+  } catch {
+    // If cookies() is unavailable, fall through to header check
+  }
+
   const reqHeaders = await headers();
   const authHeader = reqHeaders.get("authorization");
 

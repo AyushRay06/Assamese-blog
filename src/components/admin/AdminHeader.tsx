@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ShieldCheck, Plus, ArrowUpRight, LayoutDashboard } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { AdminLogoutButton } from "@/components/admin/AdminLogoutButton";
 import { cn } from "cn";
 
 export function AdminHeader() {
@@ -42,7 +43,7 @@ export function AdminHeader() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href="/"
             target="_blank"
@@ -55,6 +56,8 @@ export function AdminHeader() {
             <span>View Public Site</span>
             <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
+          <div className="h-4 w-px bg-border/60 mx-0.5 hidden sm:block" />
+          <AdminLogoutButton />
         </div>
       </div>
     </header>

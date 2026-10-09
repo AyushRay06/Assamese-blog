@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyBasicAuthHeader, checkRateLimit } from "@/lib/auth";
+import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/session";
 import { uploadImage, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE_BYTES } from "@/lib/blob";
 
 export async function POST(request: NextRequest) {
-  // Re-verify authorization on server
+  // Re-verify authorization on server (session cookie or Basic auth)
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  const isSessionValid = sessionCookie ? await verifySessionToken(sessionCookie) : false;
   const authHeader = request.headers.get("authorization");
-  if (!verifyBasicAuthHeader(authHeader)) {
+  const isBasicValid = verifyBasicAuthHeader(authHeader);
+
+  if (!isSessionValid && !isBasicValid) {
     return NextResponse.json(
       { error: "Unauthorized: Admin credentials required" },
       { status: 401 }
