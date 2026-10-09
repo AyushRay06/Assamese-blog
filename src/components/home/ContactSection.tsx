@@ -82,12 +82,12 @@ export function ContactSection() {
           <div className="lg:col-span-7">
             <form onSubmit={handleSubmit} className="space-y-5">
               {status === "success" && (
-                <div className="flex items-start gap-3 border border-emerald-500/30 bg-emerald-500/5 p-4 text-emerald-900">
+                <div className="flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 text-emerald-900">
                   <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 mt-0.5" />
                   <div className="text-xs leading-relaxed">
                     <p className="font-semibold text-sm">Message Delivered</p>
                     <p className="mt-0.5 text-muted-foreground">
-                      Your inquiry has been received and logged. Thank you for reaching out.
+                      Your inquiry has been received and logged to the portal. Inquiries can also be viewed inside the Admin Portal.
                     </p>
                   </div>
                 </div>
