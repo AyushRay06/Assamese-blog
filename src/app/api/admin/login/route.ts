@@ -43,17 +43,22 @@ export async function POST(request: NextRequest) {
     const pass = password;
 
     const configuredUser = (process.env.ADMIN_USERNAME || "admin").trim();
-    const configuredPass = process.env.ADMIN_PASSWORD || "supersecretadminpassword123";
+    const configuredPass = process.env.ADMIN_PASSWORD;
 
-    const validUsers = [configuredUser, "admin"];
-    const validPasswords = [configuredPass, "admin", "admin123", "password", "supersecretadminpassword123"];
+    if (!configuredPass) {
+      console.error("ADMIN_PASSWORD is not set in environment.");
+      return NextResponse.json(
+        { error: "Server authentication configuration missing. Please check server environment." },
+        { status: 500 }
+      );
+    }
 
-    const isUserValid = validUsers.includes(user);
-    const isPassValid = validPasswords.some((p) => timingSafeEqualStr(pass, p));
+    const isUserValid = timingSafeEqualStr(user, configuredUser);
+    const isPassValid = timingSafeEqualStr(pass, configuredPass);
 
     if (!isUserValid || !isPassValid) {
       return NextResponse.json(
-        { error: "Invalid username or password. Default credentials: admin / admin" },
+        { error: "Invalid username or password." },
         { status: 401 }
       );
     }

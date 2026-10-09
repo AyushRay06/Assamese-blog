@@ -183,26 +183,6 @@ function AdminLoginForm() {
                   </button>
                 </div>
               </div>
-
-              {/* Default Credentials Helper */}
-              <div className="rounded-lg border border-border/70 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center justify-between gap-2">
-                <div>
-                  <span className="font-mono font-medium text-foreground">Default:</span>{" "}
-                  <code className="bg-background px-1.5 py-0.5 rounded border border-border/60 font-mono text-[11px]">admin</code> /{" "}
-                  <code className="bg-background px-1.5 py-0.5 rounded border border-border/60 font-mono text-[11px]">admin</code>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUsername("admin");
-                    setPassword("admin");
-                    setErrorMessage(null);
-                  }}
-                  className="text-[11px] font-mono text-primary hover:underline cursor-pointer"
-                >
-                  Auto-fill
-                </button>
-              </div>
             </CardContent>
 
             <CardFooter className="flex flex-col gap-3 pt-2 pb-6">

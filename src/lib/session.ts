@@ -72,7 +72,7 @@ export async function verifySessionToken(token: string | null | undefined): Prom
   }
 
   const expectedUser = (process.env.ADMIN_USERNAME || "admin").trim();
-  if (username !== expectedUser && username !== "admin") {
+  if (username !== expectedUser) {
     return false;
   }
 
