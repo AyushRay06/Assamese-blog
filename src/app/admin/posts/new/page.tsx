@@ -17,7 +17,7 @@ export default async function NewPostPage({ searchParams }: NewPostPageProps) {
       <AdminHeader />
 
       <main className="flex-1 py-8 sm:py-10">
-        <div className="container mx-auto max-w-5xl px-4 sm:px-6 space-y-8">
+        <div className="w-full px-4 sm:px-8 lg:px-12 space-y-8">
           <Tabs defaultValue={initialMode} className="w-full space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/50 pb-5">
               <div>

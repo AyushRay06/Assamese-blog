@@ -25,7 +25,7 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
       <AdminHeader />
 
       <main className="flex-1 py-8 sm:py-10">
-        <div className="container mx-auto max-w-5xl px-4 sm:px-6">
+        <div className="w-full px-4 sm:px-8 lg:px-12 space-y-8">
           <PostForm
             initialData={{
               id: post.id,

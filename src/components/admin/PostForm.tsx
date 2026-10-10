@@ -78,7 +78,7 @@ export function PostForm({ initialData }: PostFormProps) {
   // Full Screen studio states
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [viewMode, setViewMode] = useState<"write" | "split" | "preview">("write");
-  const [canvasWidth, setCanvasWidth] = useState<"standard" | "comfortable" | "wide">("comfortable");
+  const [canvasWidth, setCanvasWidth] = useState<"standard" | "comfortable" | "wide">("wide");
   const [fontSize, setFontSize] = useState<"normal" | "comfortable" | "spacious">("comfortable");
   const [isZenMode, setIsZenMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -432,544 +432,48 @@ export function PostForm({ initialData }: PostFormProps) {
   const getCanvasWidthClass = () => {
     switch (canvasWidth) {
       case "standard":
-        return "max-w-3xl";
+        return "max-w-4xl mx-auto";
       case "comfortable":
-        return "max-w-4xl";
+        return "max-w-6xl mx-auto";
       case "wide":
-        return "max-w-5xl";
+        return "w-full max-w-none";
       default:
-        return "max-w-4xl";
+        return "w-full max-w-none";
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Bar with actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-5">
-        <div className="flex items-center gap-3">
+    <div className="w-full flex flex-col font-sans selection:bg-primary/20 rounded-2xl border border-border/50 bg-card/25 shadow-xs overflow-hidden">
+      {/* Studio Top Navigation Bar */}
+      <header
+        className={cn(
+          "sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border/80 bg-background/95 backdrop-blur-md px-3 sm:px-6 lg:px-8 shrink-0 transition-opacity duration-300",
+          isZenMode && "opacity-25 hover:opacity-100 focus-within:opacity-100"
+        )}
+      >
+        {/* Left Section */}
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href="/admin"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "icon" }),
-              "h-9 w-9"
-            )}
+            className="h-8 gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground inline-flex items-center px-2.5 py-1 rounded-md hover:bg-muted/60 transition-colors"
+            title="Return to Dashboard"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Dashboard</span>
           </Link>
-          <div>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
-              {isEditing ? "Edit Post" : "Create New Post"}
-            </h1>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-              {saveStatus === "saved" && (
-                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="h-3 w-3" />
-                  All changes saved
-                </span>
-              )}
-              {saveStatus === "saving" && (
-                <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                  <RefreshCw className="h-3 w-3 animate-spin" />
-                  Saving draft...
-                </span>
-              )}
-              {saveStatus === "unsaved" && (
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  Unsaved changes
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => handleSubmit("DRAFT")}
-            disabled={isPending || isUploadingCover}
-          >
-            Save Draft
-          </Button>
+          <div className="h-4 w-px bg-border hidden sm:block" />
 
-          <Button
-            type="button"
-            onClick={() => handleSubmit("PUBLISHED")}
-            disabled={isPending || isUploadingCover}
-            className="bg-primary hover:bg-primary/90"
-          >
-            {isUploadingCover ? (
-              <>
-                <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
-                Uploading Image...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-1.5 h-4 w-4" />
-                {status === "PUBLISHED" ? "Update Published Post" : "Publish Post"}
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Main Content (2 columns) */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Assamese Active Information Banner */}
-          {language === "AS" && (
-            <div className="flex items-center justify-between rounded-none border border-primary/20 bg-primary/5 p-3.5 text-xs text-foreground">
-              <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 rounded-none bg-primary animate-pulse" />
-                <span className="font-semibold text-primary font-assamese text-sm">
-                  অসমীয়া লিখন প্ৰণালী সক্ৰিয় (Assamese Writing Mode)
-                </span>
-                <span className="text-muted-foreground hidden sm:inline">
-                  — Type English phonetically and press Space, or use the in-editor keyboard.
-                </span>
-              </div>
-              <Badge variant="outline" className="font-mono text-[10px]">
-                SMES / AS
-              </Badge>
-            </div>
-          )}
-
-          {/* Title */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="post-title" className="text-sm font-semibold">
-                Post Title *
-              </Label>
-              {language === "AS" && title && /[a-zA-Z]/.test(title) && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const converted = transliterateTextToAssamese(title);
-                    handleTitleChange(converted);
-                    toast.success("Converted title to Assamese");
-                  }}
-                  className="h-6 text-xs text-primary gap-1"
-                >
-                  <Sparkles className="h-3 w-3 text-amber-500" />
-                  <span>Convert Title to অসমীয়া</span>
-                </Button>
-              )}
-            </div>
-            <Input
-              id="post-title"
-              placeholder={
-                language === "AS"
-                  ? "শীৰ্ষক ইয়াত লিখক... (e.g. 'Aaji bhal din')"
-                  : "Enter a compelling title..."
-              }
-              value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (language === "AS" && e.key === " ") {
-                  // If ends with English word, convert on space
-                  const match = title.match(/([a-zA-Z]+)$/);
-                  if (match) {
-                    const converted = transliterateTextToAssamese(title);
-                    if (converted !== title) {
-                      setTitle(converted + " ");
-                      if (!isSlugManuallyEdited) {
-                        setSlug(generateSlug(converted));
-                      }
-                    }
-                  }
-                }
-              }}
-              className={`text-lg sm:text-xl font-bold py-5 ${
-                language === "AS" ? "font-assamese" : ""
-              }`}
-            />
+          <div className="hidden sm:flex items-center gap-2">
+            <span className="text-xs font-semibold text-foreground truncate max-w-[180px] lg:max-w-[280px]">
+              {title || (isEditing ? "Edit Blog" : "New Blog")}
+            </span>
+            <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">
+              {status}
+            </Badge>
           </div>
 
-          {/* Slug */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="post-slug" className="text-xs text-muted-foreground">
-                URL Slug (auto-transliterated for Assamese)
-              </Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                onClick={handleRegenerateSlug}
-              >
-                <RefreshCw className="h-3 w-3" />
-                Regenerate
-              </Button>
-            </div>
-            <div className="flex items-center rounded-none border border-input bg-muted/30 px-3">
-              <span className="text-xs text-muted-foreground font-mono">/blog/</span>
-              <input
-                id="post-slug"
-                value={slug}
-                onChange={(e) => {
-                  setSlug(e.target.value);
-                  setIsSlugManuallyEdited(true);
-                  setSaveStatus("unsaved");
-                }}
-                className="w-full bg-transparent py-2 px-1 text-xs font-mono focus:outline-none"
-                placeholder="post-url-slug"
-              />
-            </div>
-          </div>
-
-          {/* Excerpt */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="post-excerpt" className="text-sm font-semibold">
-                Short Excerpt / Summary
-              </Label>
-              {language === "AS" && excerpt && /[a-zA-Z]/.test(excerpt) && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const converted = transliterateTextToAssamese(excerpt);
-                    setExcerpt(converted);
-                    setSaveStatus("unsaved");
-                    toast.success("Converted excerpt to Assamese");
-                  }}
-                  className="h-6 text-xs text-primary gap-1"
-                >
-                  <Sparkles className="h-3 w-3 text-amber-500" />
-                  <span>Convert Excerpt to অসমীয়া</span>
-                </Button>
-              )}
-            </div>
-            <Textarea
-              id="post-excerpt"
-              rows={2}
-              placeholder="A brief summary for previews, search results, and social cards..."
-              value={excerpt}
-              onChange={(e) => {
-                setExcerpt(e.target.value);
-                setSaveStatus("unsaved");
-              }}
-              onKeyDown={(e) => {
-                if (language === "AS" && e.key === " ") {
-                  const match = excerpt.match(/([a-zA-Z]+)$/);
-                  if (match) {
-                    const converted = transliterateTextToAssamese(excerpt);
-                    if (converted !== excerpt) {
-                      setExcerpt(converted + " ");
-                    }
-                  }
-                }
-              }}
-              className={language === "AS" ? "font-assamese" : ""}
-            />
-          </div>
-
-          {/* Editor & Live Preview Tabs */}
-          <div className="space-y-2">
-            <Tabs defaultValue="write" className="w-full">
-              <div className="flex items-center justify-between border-b pb-2">
-                <Label className="text-sm font-semibold">Content</Label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsFullScreen(true)}
-                    className="h-8 text-xs font-mono gap-1.5"
-                    title="Open Full-Screen Studio"
-                  >
-                    <Maximize2 className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Fullscreen Studio</span>
-                  </Button>
-                  <TabsList className="h-8">
-                    <TabsTrigger value="write" className="text-xs gap-1.5">
-                      <PenTool className="h-3.5 w-3.5" />
-                      Write
-                    </TabsTrigger>
-                    <TabsTrigger value="preview" className="text-xs gap-1.5">
-                      <Eye className="h-3.5 w-3.5" />
-                      Live Preview
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-              </div>
-
-              <TabsContent value="write" className="mt-4 focus-visible:outline-none">
-                <TiptapEditor
-                  initialContent={initialData?.content}
-                  language={language}
-                  onChange={handleEditorChange}
-                  isFullScreen={false}
-                  onToggleFullScreen={() => setIsFullScreen(true)}
-                  fontSize={fontSize}
-                  onStatsChange={(stats) => setEditorStats(stats)}
-                  placeholder={
-                    language === "AS"
-                      ? "অসমীয়াত নিজৰ মনৰ কথা লিখক..."
-                      : "Write your blog using headings, images, lists, and formatting..."
-                  }
-                />
-              </TabsContent>
-
-              <TabsContent value="preview" className="mt-4 focus-visible:outline-none">
-                <Card>
-                  <CardHeader className="border-b bg-muted/20">
-                    <CardTitle
-                      className={`text-2xl ${
-                        language === "AS" ? "font-assamese" : "font-heading"
-                      }`}
-                    >
-                      {title || "Untitled Post Preview"}
-                    </CardTitle>
-                    {excerpt && (
-                      <CardDescription
-                        className={`text-base ${
-                          language === "AS" ? "font-assamese" : ""
-                        }`}
-                      >
-                        {excerpt}
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    {contentHtml ? (
-                      <PostContent
-                        contentHtml={contentHtml}
-                        language={language}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">
-                        No content written yet. Switch to the Write tab to begin.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-
-        {/* Sidebar Settings (1 column) */}
-        <div className="space-y-6">
-          {/* Publishing Settings Card */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base">Publishing Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Language Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="post-language">Language</Label>
-                <Select
-                  value={language}
-                  onValueChange={(val) => {
-                    if (val === "EN" || val === "AS") {
-                      setLanguage(val);
-                      setSaveStatus("unsaved");
-                    }
-                  }}
-                >
-                  <SelectTrigger id="post-language">
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(SUPPORTED_LANGUAGES).map((lang) => (
-                      <SelectItem key={lang.code} value={lang.code}>
-                        {lang.label} ({lang.nativeName})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground">
-                  Loads the Noto Sans Bengali font and sets the HTML lang tag accordingly.
-                </p>
-              </div>
-
-              {/* Status */}
-              <div className="space-y-2">
-                <Label htmlFor="post-status">Status</Label>
-                <Select
-                  value={status}
-                  onValueChange={(val) => {
-                    if (val === "DRAFT" || val === "PUBLISHED") {
-                      setStatus(val);
-                      setSaveStatus("unsaved");
-                    }
-                  }}
-                >
-                  <SelectTrigger id="post-status">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="DRAFT">Draft (Hidden from public)</SelectItem>
-                    <SelectItem value="PUBLISHED">Published (Public)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Tags */}
-              <div className="space-y-2">
-                <Label htmlFor="post-tags">Tags (comma separated)</Label>
-                <Input
-                  id="post-tags"
-                  placeholder="Technology, Philosophy, অসমীয়া"
-                  value={tagInput}
-                  onChange={(e) => {
-                    setTagInput(e.target.value);
-                    setSaveStatus("unsaved");
-                  }}
-                />
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {tagInput
-                    .split(",")
-                    .map((t) => t.trim())
-                    .filter(Boolean)
-                    .map((tag, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-[10px]">
-                        #{tag}
-                      </Badge>
-                    ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Cover Image Card */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base">Cover Image</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                onChange={handleCoverUpload}
-                className="hidden"
-              />
-
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full flex items-center justify-center gap-2 border-dashed h-16"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingCover}
-              >
-                <Upload className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs">
-                  {isUploadingCover ? "Uploading..." : "Upload cover image"}
-                </span>
-              </Button>
-
-              <div className="space-y-1">
-                <Label htmlFor="cover-url" className="text-xs text-muted-foreground">
-                  Or enter image URL
-                </Label>
-                <Input
-                  id="cover-url"
-                  placeholder="https://..."
-                  value={coverImage}
-                  onChange={(e) => {
-                    const val = e.target.value.trim();
-                    setCoverImage(val);
-                    setCoverPreviewUrl(val);
-                    setSaveStatus("unsaved");
-                  }}
-                  className="text-xs"
-                />
-              </div>
-
-              {(coverImage || coverPreviewUrl) && (
-                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-none border bg-muted">
-                  <Image
-                    src={coverImage || coverPreviewUrl}
-                    alt="Cover preview"
-                    fill
-                    unoptimized={Boolean((coverImage || coverPreviewUrl)?.startsWith("data:") || (coverImage || coverPreviewUrl)?.startsWith("blob:"))}
-                    className="object-cover"
-                  />
-                  {isUploadingCover && (
-                    <div className="absolute inset-0 bg-background/80 backdrop-blur-xs flex flex-col items-center justify-center gap-1.5 z-10">
-                      <RefreshCw className="h-5 w-5 animate-spin text-primary" />
-                      <span className="text-[11px] font-medium text-foreground">Uploading cover image...</span>
-                    </div>
-                  )}
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-2 right-2 h-7 px-2 text-xs z-20"
-                    onClick={() => {
-                      setCoverImage("");
-                      setCoverPreviewUrl("");
-                      setSaveStatus("unsaved");
-                    }}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* In-Body Images Guide Card */}
-          <Card className="border border-border/60 bg-muted/15 rounded-2xl">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold flex items-center gap-2">
-                <ImageIcon className="h-4 w-4 text-primary" />
-                <span>In-Body Images &amp; Media</span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Place multiple images anywhere across different sections of your blog body.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-xs text-muted-foreground pt-0">
-              <div className="rounded-xl bg-card p-3 border border-border/40 space-y-1.5 leading-relaxed">
-                <p>
-                  <strong>• Cursor placement:</strong> Set your cursor anywhere in the editor, then click the image icon or quick upload button on the editor toolbar.
-                </p>
-                <p>
-                  <strong>• Drag &amp; Drop:</strong> Drag any photo from your computer and drop it directly into any section or paragraph.
-                </p>
-                <p>
-                  <strong>• Paste:</strong> Copy any image and paste (<kbd className="font-mono bg-muted px-1 rounded text-[10px]">Ctrl+V</kbd> / <kbd className="font-mono bg-muted px-1 rounded text-[10px]">Cmd+V</kbd>) directly into the body.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Full-Screen Writing Studio Overlay */}
-      {isFullScreen && (
-        <div className="fixed inset-0 z-50 bg-background overflow-y-auto flex flex-col font-sans selection:bg-primary/20">
-          {/* Studio Top Navigation Bar */}
-          <header
-            className={cn(
-              "sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/80 bg-background/95 backdrop-blur-md px-3 sm:px-6 shrink-0 transition-opacity duration-300",
-              isZenMode && "opacity-25 hover:opacity-100 focus-within:opacity-100"
-            )}
-          >
-            {/* Left Section */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsFullScreen(false)}
-                className="h-8 gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground"
-                title="Exit Fullscreen (Esc)"
-              >
-                <Minimize2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Exit (Esc)</span>
-              </Button>
-
-              <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="h-4 w-px bg-border hidden sm:block" />
 
               {/* Language Segmented Toggle */}
               <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border border-border/60">
@@ -1436,7 +940,7 @@ export function PostForm({ initialData }: PostFormProps) {
 
           {/* VIEW MODE 2: SPLIT VIEW (EDITOR + LIVE READER PREVIEW SIDE-BY-SIDE) */}
           {viewMode === "split" && (
-            <div className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-8 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8 pb-80">
+            <div className="flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8 pb-80">
               {/* Left Column: Writing Canvas */}
               <div className="space-y-4 border-r-0 lg:border-r border-border/60 lg:pr-8">
                 <div className="flex items-center justify-between pb-2 border-b border-border/40">
@@ -1841,8 +1345,6 @@ export function PostForm({ initialData }: PostFormProps) {
               </div>
             </div>
           )}
-        </div>
-      )}
     </div>
   );
 }

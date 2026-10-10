@@ -142,7 +142,7 @@ export function AdminDashboardView({
   const hasActiveFilters = Boolean(statusFilter || languageFilter || searchQuery.trim());
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 sm:px-8 space-y-8 sm:space-y-10">
+    <div className="w-full px-4 sm:px-8 lg:px-12 space-y-8 sm:space-y-10">
       {/* Header Row */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
