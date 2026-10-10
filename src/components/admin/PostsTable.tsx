@@ -106,9 +106,9 @@ export function PostsTable({ posts }: PostsTableProps) {
   if (posts.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border/50 bg-card/20 p-12 text-center">
-        <h3 className="text-base font-semibold text-foreground">No articles match your current view</h3>
+        <h3 className="text-base font-semibold text-foreground">No blogs match your current view</h3>
         <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-          Try clearing your search or status filters, or start writing a new bilingual essay.
+          Try clearing your search or status filters, or start writing a new bilingual blog.
         </p>
         <div className="flex items-center justify-center gap-2 mt-5">
           <Link

@@ -162,7 +162,7 @@ export function AdminDashboardView({
       {/* Minimalist Metrics Strip */}
       <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-xs p-4 sm:p-6 shadow-xs">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          {/* All Articles */}
+          {/* All Blogs */}
           <button
             type="button"
             onClick={() => {
@@ -176,7 +176,7 @@ export function AdminDashboardView({
                 : "hover:bg-muted/40 text-muted-foreground hover:text-foreground"
             )}
           >
-            <span className="text-xs font-medium">All Articles</span>
+            <span className="text-xs font-medium">All Blogs</span>
             <span className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground font-heading">
               {stats.totalPostsCount}
             </span>
@@ -288,7 +288,7 @@ export function AdminDashboardView({
               )}
             >
               <FileText className="h-3.5 w-3.5" />
-              <span>Articles</span>
+              <span>Blogs</span>
               <span className="text-[11px] opacity-70 font-mono">
                 ({stats.totalPostsCount})
               </span>
@@ -317,12 +317,12 @@ export function AdminDashboardView({
 
           {activeTab === "posts" && (
             <div className="text-xs text-muted-foreground">
-              Showing {filteredPosts.length} of {stats.totalPostsCount} articles
+              Showing {filteredPosts.length} of {stats.totalPostsCount} blogs
             </div>
           )}
         </div>
 
-        {/* TAB CONTENT: ARTICLES */}
+        {/* TAB CONTENT: BLOGS */}
         {activeTab === "posts" && (
           <div className="space-y-5">
             {/* Search & Filters: Instant, Minimal, Open */}
@@ -333,7 +333,7 @@ export function AdminDashboardView({
                 <Input
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder="Search articles..."
+                  placeholder="Search blogs..."
                   className="pl-9 pr-8 text-xs h-9 bg-muted/20 border-border/40 rounded-full focus:bg-background transition-colors"
                 />
                 {searchQuery && (

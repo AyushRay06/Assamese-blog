@@ -11,6 +11,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { EditorToolbar } from "./EditorToolbar";
 import { AssameseKeyboardPalette } from "./AssameseKeyboardPalette";
 import { transliterateTextToAssamese, transliterateWordToAssamese } from "@/lib/assamese-translit";
+import { compressImageClient } from "@/lib/image-compression";
 import { toast } from "sonner";
 import { LanguageCode } from "@/lib/languages";
 import { cn } from "cn";
@@ -63,21 +64,27 @@ export function TiptapEditor({
   }, [phoneticEnabled]);
 
   const uploadFile = useCallback(async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file);
+    try {
+      const { file: compressedFile, dataUrl } = await compressImageClient(file);
+      const formData = new FormData();
+      formData.append("file", compressedFile);
 
-    const res = await fetch("/api/admin/upload", {
-      method: "POST",
-      body: formData,
-    });
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Failed to upload image");
+      if (!res.ok) {
+        if (dataUrl) return dataUrl;
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to upload image");
+      }
+
+      const data = await res.json();
+      return data.url || dataUrl;
+    } catch (err) {
+      throw err;
     }
-
-    const data = await res.json();
-    return data.url;
   }, []);
 
   const getProseClasses = useCallback(() => {
@@ -108,7 +115,7 @@ export function TiptapEditor({
     placeholder ||
     (isAssamese
       ? "অসমীয়াত লিখক... (ফনেটিক টাইপিং সক্ৰিয়: 'namaskar' টাইপ কৰি Space টিপক)"
-      : "Write your article using headings, images, lists, and formatting...");
+      : "Write your blog using headings, images, lists, and formatting...");
 
   const editor = useEditor({
     extensions: [
@@ -132,7 +139,7 @@ export function TiptapEditor({
       Image.configure({
         inline: false,
         HTMLAttributes: {
-          class: "rounded-none border border-border max-w-full h-auto my-4",
+          class: "rounded-xl border border-border/40 max-w-full h-auto my-6 shadow-xs mx-auto",
         },
       }),
       Placeholder.configure({

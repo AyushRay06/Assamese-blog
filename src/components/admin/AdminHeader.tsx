@@ -40,7 +40,7 @@ export function AdminHeader({
               )}
             >
               <FileText className="h-3.5 w-3.5" />
-              <span>Articles</span>
+              <span>Blogs</span>
             </Link>
 
             <Link

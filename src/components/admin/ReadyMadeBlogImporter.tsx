@@ -52,11 +52,12 @@ export function ReadyMadeBlogImporter() {
   // Content (Markdown or HTML)
   const [content, setContent] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // In-article images uploaded
-  const [inArticleImages, setInArticleImages] = useState<UploadedImageItem[]>([]);
-  const [isUploadingInArticle, setIsUploadingInArticle] = useState(false);
-  const articleImageInputRef = useRef<HTMLInputElement>(null);
+  // In-body images uploaded
+  const [inBodyImages, setInBodyImages] = useState<UploadedImageItem[]>([]);
+  const [isUploadingInBody, setIsUploadingInBody] = useState(false);
+  const bodyImageInputRef = useRef<HTMLInputElement>(null);
 
   // Drag and drop file import
   const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -106,12 +107,12 @@ export function ReadyMadeBlogImporter() {
     }
   };
 
-  // Handle In-Article Images Upload with Client-Side Compression
-  const handleArticleImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle In-Body Images Upload with Client-Side Compression
+  const handleBodyImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setIsUploadingInArticle(true);
+    setIsUploadingInBody(true);
     let count = 0;
 
     for (let i = 0; i < files.length; i++) {
@@ -129,7 +130,7 @@ export function ReadyMadeBlogImporter() {
 
         if (res.ok) {
           const data = await res.json();
-          setInArticleImages((prev) => [
+          setInBodyImages((prev) => [
             ...prev,
             {
               id: Math.random().toString(36).substring(2, 9),
@@ -139,7 +140,7 @@ export function ReadyMadeBlogImporter() {
           ]);
           count++;
         } else if (dataUrl) {
-          setInArticleImages((prev) => [
+          setInBodyImages((prev) => [
             ...prev,
             {
               id: Math.random().toString(36).substring(2, 9),
@@ -154,18 +155,49 @@ export function ReadyMadeBlogImporter() {
       }
     }
 
-    setIsUploadingInArticle(false);
+    setIsUploadingInBody(false);
     if (count > 0) {
-      toast.success(`Uploaded ${count} image(s) for in-article use`);
+      toast.success(`Uploaded ${count} image(s) for blog body`);
     }
   };
 
-  // Insert image markdown tag into content
+  // Insert image markdown tag into content at current cursor position
   const insertImageIntoContent = (url: string, name: string) => {
     const cleanName = name.replace(/\.[^/.]+$/, "");
     const markdownTag = `\n\n![${cleanName}](${url})\n\n`;
-    setContent((prev) => prev + markdownTag);
-    toast.success("Inserted image snippet into blog text");
+
+    const textarea = contentTextareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart ?? content.length;
+      const end = textarea.selectionEnd ?? content.length;
+      const before = content.substring(0, start);
+      const after = content.substring(end);
+      const updated = before + markdownTag + after;
+      setContent(updated);
+
+      setTimeout(() => {
+        textarea.focus();
+        const cursor = start + markdownTag.length;
+        textarea.setSelectionRange(cursor, cursor);
+      }, 20);
+
+      toast.success(`Inserted image at cursor: "${cleanName}"`);
+    } else {
+      setContent((prev) => prev + markdownTag);
+      toast.success("Inserted image snippet into blog text");
+    }
+  };
+
+  const copyImageMarkdownTag = (url: string, name: string) => {
+    const cleanName = name.replace(/\.[^/.]+$/, "");
+    const tag = `![${cleanName}](${url})`;
+    navigator.clipboard.writeText(tag);
+    toast.success(`Copied markdown tag for "${cleanName}"! Paste it into any section of your blog.`);
+  };
+
+  const removeBodyImage = (id: string) => {
+    setInBodyImages((prev) => prev.filter((img) => img.id !== id));
+    toast.info("Image removed from in-body gallery");
   };
 
   // Handle Drop of Ready-Made Document (.md, .txt, .html)
@@ -343,7 +375,7 @@ export function ReadyMadeBlogImporter() {
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="import-title" className="text-sm font-semibold">
-              Article Title *
+              Blog Title *
             </Label>
             <Input
               id="import-title"
@@ -365,7 +397,7 @@ export function ReadyMadeBlogImporter() {
             <Textarea
               id="import-excerpt"
               rows={2}
-              placeholder="Brief summary of the article for blog cards and SEO..."
+              placeholder="Brief summary of the blog for cards and SEO..."
               value={excerpt}
               onChange={(e) => setExcerpt(e.target.value)}
               className="text-sm leading-relaxed"
@@ -380,7 +412,7 @@ export function ReadyMadeBlogImporter() {
               </Label>
               <Input
                 id="import-slug"
-                placeholder="article-url-slug"
+                placeholder="blog-url-slug"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
                 className="font-mono text-xs"
@@ -487,61 +519,95 @@ export function ReadyMadeBlogImporter() {
         </div>
       </div>
 
-      {/* 3. In-Article Images Drawer / Tool */}
+      {/* 3. In-Body Images Gallery / Tool */}
       <div className="border border-border/60 rounded-2xl p-6 bg-muted/15 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h4 className="font-heading text-sm font-semibold text-foreground flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-primary" />
-              <span>In-Article Images Tool</span>
+              <span>In-Body Images Gallery</span>
             </h4>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Upload images belonging inside the body of the blog, then click "Insert" to place them anywhere in the text.
+              Upload photos to place anywhere in the body of your blog. Set your cursor anywhere in the text below and click &quot;+ Insert at Cursor&quot;, or copy the markdown tag.
             </p>
           </div>
 
           <div>
             <input
-              ref={articleImageInputRef}
+              ref={bodyImageInputRef}
               type="file"
               accept="image/*"
               multiple
               className="hidden"
-              onChange={handleArticleImagesUpload}
+              onChange={handleBodyImagesUpload}
             />
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={isUploadingInArticle}
-              onClick={() => articleImageInputRef.current?.click()}
-              className="gap-1.5 text-xs font-mono"
+              disabled={isUploadingInBody}
+              onClick={() => bodyImageInputRef.current?.click()}
+              className="gap-1.5 text-xs font-mono rounded-full px-3.5"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span>{isUploadingInArticle ? "Uploading..." : "Upload In-Body Images"}</span>
+              <span>{isUploadingInBody ? "Uploading..." : "Upload In-Body Images"}</span>
             </Button>
           </div>
         </div>
 
         {/* Thumbnail gallery of uploaded images */}
-        {inArticleImages.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 pt-2">
-            {inArticleImages.map((img) => (
-              <div key={img.id} className="group relative border border-border rounded-lg overflow-hidden bg-background">
-                <div className="relative aspect-video w-full">
-                  <Image src={img.url} alt={img.name} fill className="object-cover" />
+        {inBodyImages.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {inBodyImages.map((img) => (
+                <div
+                  key={img.id}
+                  className="group relative border border-border/80 rounded-xl overflow-hidden bg-background shadow-xs flex flex-col justify-between"
+                >
+                  <div className="relative aspect-video w-full bg-muted/40">
+                    <Image src={img.url} alt={img.name} fill className="object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeBodyImage(img.id)}
+                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-destructive transition-colors cursor-pointer"
+                      title="Remove image from gallery"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <div className="p-2 space-y-1.5 bg-card">
+                    <p className="text-[11px] font-medium text-foreground truncate" title={img.name}>
+                      {img.name}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => insertImageIntoContent(img.url, img.name)}
+                        className="flex-1 text-[10px] py-1 px-1.5 rounded-md bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity cursor-pointer text-center"
+                        title="Insert right where your cursor is in the blog content"
+                      >
+                        + Insert at Cursor
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => copyImageMarkdownTag(img.url, img.name)}
+                        className="p-1 rounded-md border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer"
+                        title="Copy markdown tag: ![Caption](url)"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-1.5 text-center bg-card">
-                  <button
-                    type="button"
-                    onClick={() => insertImageIntoContent(img.url, img.name)}
-                    className="w-full text-[10px] font-mono py-1 rounded bg-foreground text-background font-medium hover:opacity-90 transition-opacity"
-                  >
-                    + Insert
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground flex items-center gap-2">
+              <span className="text-base">💡</span>
+              <span>
+                <strong>Tip:</strong> Click anywhere in the text box below to place your cursor, then click <strong>&quot;+ Insert at Cursor&quot;</strong> on any image above to place it in that exact section.
+              </span>
+            </div>
           </div>
         )}
       </div>
@@ -560,7 +626,7 @@ export function ReadyMadeBlogImporter() {
               variant="ghost"
               size="sm"
               onClick={() => setPreviewMode(!previewMode)}
-              className="h-7 text-xs font-mono gap-1"
+              className="h-7 text-xs font-mono gap-1 rounded-full px-3"
             >
               <Eye className="h-3.5 w-3.5" />
               <span>{previewMode ? "Edit Raw" : "Live Preview"}</span>
@@ -580,7 +646,7 @@ export function ReadyMadeBlogImporter() {
                       if (p.startsWith("## ")) return `<h2>${p.slice(3)}</h2>`;
                       if (p.startsWith("# ")) return `<h1>${p.slice(2)}</h1>`;
                       const img = p.match(/^!\[(.*?)\]\((.*?)\)$/);
-                      if (img) return `<img src="${img[2]}" alt="${img[1]}" class="my-4 rounded-lg" />`;
+                      if (img) return `<img src="${img[2]}" alt="${img[1]}" class="my-4 rounded-xl max-w-full" />`;
                       return `<p>${p.replace(/\n/g, "<br/>")}</p>`;
                     })
                     .join(""),
@@ -592,6 +658,7 @@ export function ReadyMadeBlogImporter() {
           </div>
         ) : (
           <Textarea
+            ref={contentTextareaRef}
             id="import-content"
             rows={18}
             placeholder={`Paste your ready-made blog text here...
@@ -599,9 +666,8 @@ You can use standard headings like:
 ## First Section
 Your paragraphs and thoughts...
 
-To insert images, use:
-![Image Caption](image-url)
-(Or upload using the In-Article Images tool above)`}
+To insert images in different sections, set your cursor there and click "+ Insert at Cursor" above, or use:
+![Image Caption](image-url)`}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="font-mono text-sm leading-relaxed p-4 rounded-2xl border-border/80"

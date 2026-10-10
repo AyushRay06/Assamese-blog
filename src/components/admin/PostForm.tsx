@@ -45,6 +45,7 @@ import {
   SlidersHorizontal,
   X,
   Languages,
+  ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createPostAction, updatePostAction } from "@/actions/posts";
@@ -710,7 +711,7 @@ export function PostForm({ initialData }: PostFormProps) {
                   placeholder={
                     language === "AS"
                       ? "অসমীয়াত নিজৰ মনৰ কথা লিখক..."
-                      : "Write your article using headings, images, lists, and formatting..."
+                      : "Write your blog using headings, images, lists, and formatting..."
                   }
                 />
               </TabsContent>
@@ -915,6 +916,32 @@ export function PostForm({ initialData }: PostFormProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* In-Body Images Guide Card */}
+          <Card className="border border-border/60 bg-muted/15 rounded-2xl">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-semibold flex items-center gap-2">
+                <ImageIcon className="h-4 w-4 text-primary" />
+                <span>In-Body Images &amp; Media</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Place multiple images anywhere across different sections of your blog body.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-xs text-muted-foreground pt-0">
+              <div className="rounded-xl bg-card p-3 border border-border/40 space-y-1.5 leading-relaxed">
+                <p>
+                  <strong>• Cursor placement:</strong> Set your cursor anywhere in the editor, then click the image icon or quick upload button on the editor toolbar.
+                </p>
+                <p>
+                  <strong>• Drag &amp; Drop:</strong> Drag any photo from your computer and drop it directly into any section or paragraph.
+                </p>
+                <p>
+                  <strong>• Paste:</strong> Copy any image and paste (<kbd className="font-mono bg-muted px-1 rounded text-[10px]">Ctrl+V</kbd> / <kbd className="font-mono bg-muted px-1 rounded text-[10px]">Cmd+V</kbd>) directly into the body.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -1042,7 +1069,7 @@ export function PostForm({ initialData }: PostFormProps) {
                     ? "bg-background text-foreground shadow-xs font-semibold"
                     : "text-muted-foreground hover:text-foreground"
                 )}
-                title="Full Reader Article Preview"
+                title="Full Reader Blog Preview"
               >
                 <Eye className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Preview</span>
@@ -1400,7 +1427,7 @@ export function PostForm({ initialData }: PostFormProps) {
                   placeholder={
                     language === "AS"
                       ? "অসমীয়াত নিজৰ চিন্তা, গৱেষণা বা মতামত লিখক... (SMS কিবৰ্ড সক্ৰিয়: 'axom', 'namaskar' টাইপ কৰি Space টিপক)"
-                      : "Start writing your article with headings, quotes, lists, images, and formatting..."
+                      : "Start writing your blog with headings, quotes, lists, images, and formatting..."
                   }
                 />
               </div>
@@ -1491,7 +1518,7 @@ export function PostForm({ initialData }: PostFormProps) {
                         language === "AS" && "font-assamese"
                       )}
                     >
-                      {title || "Untitled Article"}
+                      {title || "Untitled Blog"}
                     </h1>
                     {excerpt && (
                       <p
@@ -1526,7 +1553,7 @@ export function PostForm({ initialData }: PostFormProps) {
                       <PostContent contentHtml={contentHtml} language={language} />
                     ) : (
                       <p className="text-sm text-muted-foreground italic">
-                        Start writing in the editor on the left to see your live article render here...
+                        Start writing in the editor on the left to see your live blog render here...
                       </p>
                     )}
                   </div>
@@ -1569,7 +1596,7 @@ export function PostForm({ initialData }: PostFormProps) {
                       language === "AS" && "font-assamese"
                     )}
                   >
-                    {title || "Untitled Article"}
+                    {title || "Untitled Blog"}
                   </h1>
 
                   {excerpt && (
@@ -1692,9 +1719,20 @@ export function PostForm({ initialData }: PostFormProps) {
                   </div>
                 </div>
 
+                {/* In-Body Images Helper */}
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <ImageIcon className="h-3.5 w-3.5 text-primary" />
+                    <span>In-Body Images Placement</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    To place images in different sections of your blog, set your cursor at the desired section in the editor and click the Image tool on the toolbar, or drag and drop photos directly.
+                  </p>
+                </div>
+
                 {/* Language */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Article Language</Label>
+                  <Label className="text-xs font-semibold">Blog Language</Label>
                   <Select
                     value={language}
                     onValueChange={(val) => {

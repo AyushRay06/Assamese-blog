@@ -136,7 +136,7 @@ export function EditorToolbar({
     setImageUrl("");
     setLocalPreviewUrl("");
     setImageAlt("");
-    toast.success("Image inserted into article body");
+    toast.success("Image inserted into blog body");
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,7 +236,7 @@ export function EditorToolbar({
         .setImage({ src: finalSrc, alt: rawFile.name.replace(/\.[^/.]+$/, "") })
         .run();
 
-      toast.success("Image inserted into article body!", { id: "direct-image-upload" });
+      toast.success("Image inserted into blog body!", { id: "direct-image-upload" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed", {
         id: "direct-image-upload",
@@ -690,7 +690,10 @@ export function EditorToolbar({
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Insert Article Image</DialogTitle>
+            <DialogTitle>Insert Blog Image at Cursor</DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              This image will appear at your current cursor position in the blog body.
+            </p>
           </DialogHeader>
           <div className="space-y-4 py-3">
             {/* File Upload Trigger */}
@@ -777,7 +780,7 @@ export function EditorToolbar({
               className="gap-1.5"
             >
               <CheckCircle2 className="h-4 w-4" />
-              <span>Insert into Article</span>
+              <span>Insert into Blog</span>
             </Button>
           </DialogFooter>
         </DialogContent>
