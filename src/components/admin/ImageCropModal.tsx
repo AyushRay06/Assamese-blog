@@ -105,83 +105,8 @@ export function ImageCropModal({
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
-
-  // Safe Image URL (guaranteed untainted same-origin or local blob)
-  const [safeImageSrc, setSafeImageSrc] = useState<string>("");
-  const [isLoadingSafeImage, setIsLoadingSafeImage] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-
   const dragStartRef = useRef<{ clientX: number; clientY: number; startX: number; startY: number } | null>(null);
-
-  // Convert remote/external image to clean local blob or proxy to guarantee untainted canvas
-  useEffect(() => {
-    let isCancelled = false;
-    let localBlobUrl: string | null = null;
-
-    async function prepareSafeImage() {
-      if (!open || !imageSrc) return;
-
-      setIsLoadingSafeImage(true);
-      setLoadError(null);
-      setImageLoaded(false);
-
-      // Local data URLs or blob URLs are already same-origin and never taint canvas
-      if (imageSrc.startsWith("data:") || imageSrc.startsWith("blob:")) {
-        setSafeImageSrc(imageSrc);
-        setIsLoadingSafeImage(false);
-        return;
-      }
-
-      // Relative path on local site
-      if (imageSrc.startsWith("/") && !imageSrc.startsWith("//")) {
-        setSafeImageSrc(imageSrc);
-        setIsLoadingSafeImage(false);
-        return;
-      }
-
-      // External / remote URL: fetch via server-side image proxy to completely avoid tainted canvas
-      try {
-        const proxyUrl = `/api/admin/proxy-image?url=${encodeURIComponent(imageSrc)}`;
-        const res = await fetch(proxyUrl);
-        if (!res.ok) {
-          throw new Error(`Proxy fetch status: ${res.status}`);
-        }
-        const blob = await res.blob();
-        if (isCancelled) return;
-
-        localBlobUrl = URL.createObjectURL(blob);
-        setSafeImageSrc(localBlobUrl);
-      } catch (err) {
-        console.warn("Proxy load warning, falling back to direct CORS fetch:", err);
-        try {
-          const directRes = await fetch(imageSrc, { mode: "cors" });
-          if (!directRes.ok) throw new Error(`Direct fetch status: ${directRes.status}`);
-          const blob = await directRes.blob();
-          if (isCancelled) return;
-          localBlobUrl = URL.createObjectURL(blob);
-          setSafeImageSrc(localBlobUrl);
-        } catch {
-          // Fallback to proxy URL directly
-          if (!isCancelled) {
-            setSafeImageSrc(`/api/admin/proxy-image?url=${encodeURIComponent(imageSrc)}`);
-          }
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingSafeImage(false);
-        }
-      }
-    }
-
-    prepareSafeImage();
-
-    return () => {
-      isCancelled = true;
-      if (localBlobUrl) {
-        URL.revokeObjectURL(localBlobUrl);
-      }
-    };
-  }, [open, imageSrc]);
 
   // Reset transforms whenever a new image or preset is opened
   useEffect(() => {
@@ -267,6 +192,66 @@ export function ImageCropModal({
 
   const currentPreset = PRESETS.find((p) => p.id === selectedPreset) || PRESETS[0];
 
+  // Helper to render and export cropped canvas to WebP Blob
+  const drawAndExport = (
+    imageElement: HTMLImageElement,
+    exportWidth: number,
+    exportHeight: number,
+    frameWidth: number,
+    onScreenWidth: number,
+    onScreenHeight: number
+  ): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = exportWidth;
+        canvas.height = exportHeight;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          return reject(new Error("Canvas context initialization failed"));
+        }
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+
+        // Translate to canvas center
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+
+        // Apply rotation
+        ctx.rotate((rotation * Math.PI) / 180);
+
+        // Apply horizontal flip
+        ctx.scale(flipH ? -1 : 1, 1);
+
+        // Scale factor between screen frame and high-res export canvas
+        const scaleMultiplier = exportWidth / frameWidth;
+
+        // Draw image with current pan offset and zoom
+        const drawWidth = onScreenWidth * zoom * scaleMultiplier;
+        const drawHeight = onScreenHeight * zoom * scaleMultiplier;
+        const drawX = offset.x * scaleMultiplier - drawWidth / 2;
+        const drawY = offset.y * scaleMultiplier - drawHeight / 2;
+
+        ctx.drawImage(imageElement, drawX, drawY, drawWidth, drawHeight);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error("Canvas export returned empty"));
+            }
+          },
+          "image/webp",
+          0.88
+        );
+      } catch (err) {
+        reject(err);
+      }
+    });
+  };
+
   // Perform canvas cropping and export
   const handleApplyCrop = async () => {
     if (!imageRef.current) return;
@@ -287,79 +272,44 @@ export function ImageCropModal({
         ? Math.round(exportWidth / currentPreset.ratio)
         : Math.round(exportWidth * (frameHeight / frameWidth));
 
-      const canvas = document.createElement("canvas");
-      canvas.width = exportWidth;
-      canvas.height = exportHeight;
+      const onScreenWidth = img.clientWidth;
+      const onScreenHeight = img.clientHeight;
 
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Canvas context initialization failed");
+      let blob: Blob;
+
+      try {
+        // Fast path: direct instant export
+        blob = await drawAndExport(img, exportWidth, exportHeight, frameWidth, onScreenWidth, onScreenHeight);
+      } catch (taintErr) {
+        // If direct export hits CORS / tainted canvas, load through public proxy on demand
+        console.warn("Direct export tainted, using fast proxy fallback:", taintErr);
+        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageSrc)}`;
+        const proxiedImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const pImg = new window.Image();
+          pImg.crossOrigin = "anonymous";
+          pImg.onload = () => resolve(pImg);
+          pImg.onerror = () => reject(new Error("Failed to load proxied image"));
+          pImg.src = proxyUrl;
+        });
+
+        blob = await drawAndExport(proxiedImg, exportWidth, exportHeight, frameWidth, onScreenWidth, onScreenHeight);
       }
 
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
+      const cleanName = filename.replace(/\.[^/.]+$/, "") + ".webp";
+      const file = new File([blob], cleanName, {
+        type: "image/webp",
+        lastModified: Date.now(),
+      });
 
-      // Translate to canvas center
-      ctx.translate(canvas.width / 2, canvas.height / 2);
+      const dataUrl = URL.createObjectURL(blob);
 
-      // Apply rotation
-      ctx.rotate((rotation * Math.PI) / 180);
-
-      // Apply horizontal flip
-      ctx.scale(flipH ? -1 : 1, 1);
-
-      // Scale factor between screen frame and high-res export canvas
-      const scaleMultiplier = exportWidth / frameWidth;
-
-      // Draw image with current pan offset and zoom
-      const drawWidth = img.clientWidth * zoom * scaleMultiplier;
-      const drawHeight = img.clientHeight * zoom * scaleMultiplier;
-      const drawX = offset.x * scaleMultiplier - drawWidth / 2;
-      const drawY = offset.y * scaleMultiplier - drawHeight / 2;
-
-      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-
-      // Export canvas as compressed WebP blob
-      const outputMime = "image/webp";
-      const quality = 0.88;
-
-      canvas.toBlob(
-        async (blob) => {
-          if (!blob) {
-            toast.error("Failed to generate cropped image");
-            setIsProcessing(false);
-            return;
-          }
-
-          const cleanName = filename.replace(/\.[^/.]+$/, "") + ".webp";
-          const file = new File([blob], cleanName, {
-            type: outputMime,
-            lastModified: Date.now(),
-          });
-
-          let dataUrl = "";
-          try {
-            dataUrl = canvas.toDataURL(outputMime, quality);
-          } catch {
-            dataUrl = URL.createObjectURL(blob);
-          }
-
-          try {
-            await onCropComplete({ blob, dataUrl, file });
-            toast.success("Image framed and cropped successfully!");
-            onOpenChange(false);
-          } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to apply cropped image");
-          } finally {
-            setIsProcessing(false);
-          }
-        },
-        outputMime,
-        quality
-      );
+      await onCropComplete({ blob, dataUrl, file });
+      toast.success("Image framed and cropped successfully!");
+      onOpenChange(false);
     } catch (err) {
       console.error("Crop export error:", err);
       toast.error("Error cropping image: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -471,11 +421,10 @@ export function ImageCropModal({
               <div />
             </div>
 
-            {/* Loading state while proxying or converting remote image */}
-            {isLoadingSafeImage && (
-              <div className="absolute inset-0 z-30 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center gap-2 text-white">
-                <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-                <span className="text-xs font-mono">Preparing image for clean framing...</span>
+            {/* Loading state while browser decodes initial image */}
+            {!imageLoaded && !loadError && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 text-muted-foreground">
+                <RefreshCw className="h-5 w-5 animate-spin" />
               </div>
             )}
 
@@ -497,7 +446,7 @@ export function ImageCropModal({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 ref={imageRef}
-                src={safeImageSrc || imageSrc}
+                src={imageSrc}
                 alt="Framing preview"
                 crossOrigin="anonymous"
                 referrerPolicy="no-referrer"
@@ -628,7 +577,7 @@ export function ImageCropModal({
             <Button
               type="button"
               size="sm"
-              disabled={isProcessing || !imageLoaded || isLoadingSafeImage || Boolean(loadError)}
+              disabled={isProcessing || !imageLoaded}
               onClick={handleApplyCrop}
               className="text-xs font-mono gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium px-4"
             >
