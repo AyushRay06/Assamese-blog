@@ -24,8 +24,10 @@ import {
   ExternalLink,
   RotateCcw,
   ShieldCheck,
+  Crop,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ImageCropModal, type CropResult, type AspectRatioOption } from "./ImageCropModal";
 
 interface UploadedImageItem {
   id: string;
@@ -53,10 +55,15 @@ export function ReadyMadeBlogImporter() {
     title: string;
   } | null>(null);
 
-  // Cover image
+  // Cover image & Interactive Framing
   const [coverImage, setCoverImage] = useState("");
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [cropTarget, setCropTarget] = useState<{ type: "cover" } | { type: "body"; id: string } | null>(null);
+  const [cropImageSrc, setCropImageSrc] = useState("");
+  const [cropAspectRatio, setCropAspectRatio] = useState<AspectRatioOption>("16:9");
+  const [cropModalTitle, setCropModalTitle] = useState("Crop & Frame Image");
 
   // Content (Markdown or HTML)
   const [content, setContent] = useState("");
@@ -72,47 +79,104 @@ export function ReadyMadeBlogImporter() {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle Cover Image Upload
-  // Handle Cover Image Upload with Client-Side Compression
+  // Handle Cover Image Selection -> opens interactive cropper
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
 
-    try {
-      setIsUploadingCover(true);
+    if (!rawFile.type.startsWith("image/")) {
+      toast.error("Please upload an image file (JPEG, PNG, WebP, GIF, AVIF)");
+      return;
+    }
 
-      // Instant client-side compression
-      const { file: compressedFile, dataUrl } = await compressImageClient(rawFile);
-      if (dataUrl) {
-        setCoverImage(dataUrl);
+    const objectUrl = URL.createObjectURL(rawFile);
+    setCropImageSrc(objectUrl);
+    setCropAspectRatio("16:9");
+    setCropModalTitle("Crop & Frame Cover Image");
+    setCropTarget({ type: "cover" });
+    setIsCropModalOpen(true);
+    if (coverInputRef.current) coverInputRef.current.value = "";
+  };
+
+  // Open cropper for existing cover image
+  const handleOpenCoverCropper = () => {
+    if (!coverImage) {
+      coverInputRef.current?.click();
+      return;
+    }
+    setCropImageSrc(coverImage);
+    setCropAspectRatio("16:9");
+    setCropModalTitle("Re-frame & Adjust Cover Image");
+    setCropTarget({ type: "cover" });
+    setIsCropModalOpen(true);
+  };
+
+  // Open cropper for specific in-body image
+  const handleOpenBodyImageCropper = (imgItem: UploadedImageItem) => {
+    setCropImageSrc(imgItem.url);
+    setCropAspectRatio("16:9");
+    setCropModalTitle(`Crop & Frame: ${imgItem.name}`);
+    setCropTarget({ type: "body", id: imgItem.id });
+    setIsCropModalOpen(true);
+  };
+
+  // Handle crop completion for cover or body image
+  const handleCropComplete = async (result: CropResult) => {
+    if (!cropTarget) return;
+
+    if (cropTarget.type === "cover") {
+      try {
+        setIsUploadingCover(true);
+        setCoverImage(result.dataUrl);
+
+        const formData = new FormData();
+        formData.append("file", result.file);
+
+        const res = await fetch("/api/admin/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.url) {
+            setCoverImage(data.url);
+            toast.success("Cover image framed and uploaded!");
+          }
+        }
+      } catch {
+        toast.info("Image cropped and saved locally");
+      } finally {
+        setIsUploadingCover(false);
       }
+    } else if (cropTarget.type === "body") {
+      const targetId = cropTarget.id;
+      try {
+        // Set local dataUrl immediately in gallery
+        setInBodyImages((prev) =>
+          prev.map((img) => (img.id === targetId ? { ...img, url: result.dataUrl } : img))
+        );
 
-      const formData = new FormData();
-      formData.append("file", compressedFile);
+        const formData = new FormData();
+        formData.append("file", result.file);
 
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        body: formData,
-      });
+        const res = await fetch("/api/admin/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to upload cover image");
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.url) {
+            setInBodyImages((prev) =>
+              prev.map((img) => (img.id === targetId ? { ...img, url: data.url } : img))
+            );
+            toast.success("In-body image cropped and uploaded!");
+          }
+        }
+      } catch {
+        toast.info("In-body image cropped locally");
       }
-
-      const data = await res.json();
-      if (data?.url) {
-        setCoverImage(data.url);
-        toast.success("Cover image uploaded and optimized");
-      }
-    } catch (err: any) {
-      if (!coverImage) {
-        toast.error(err.message || "Failed to upload cover image");
-      } else {
-        toast.info("Image compressed and attached");
-      }
-    } finally {
-      setIsUploadingCover(false);
     }
   };
 
@@ -685,13 +749,23 @@ export function ReadyMadeBlogImporter() {
                   unoptimized={Boolean(coverImage?.startsWith("data:"))}
                   className="object-cover"
                 />
-                <button
-                  type="button"
-                  onClick={() => coverInputRef.current?.click()}
-                  className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-mono transition-opacity"
-                >
-                  Change Image
-                </button>
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity p-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenCoverCropper}
+                    className="px-3 py-1.5 rounded-lg bg-white/20 backdrop-blur-xs text-white text-xs font-mono flex items-center gap-1.5 hover:bg-white/30 cursor-pointer transition-all"
+                  >
+                    <Crop className="h-3.5 w-3.5" />
+                    <span>Crop & Frame</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => coverInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-lg bg-black/70 text-white text-xs font-mono flex items-center gap-1.5 hover:bg-black/90 cursor-pointer transition-all"
+                  >
+                    Change Image
+                  </button>
+                </div>
               </div>
             ) : (
               <div
@@ -754,6 +828,14 @@ export function ReadyMadeBlogImporter() {
                 >
                   <div className="relative aspect-video w-full bg-muted/40">
                     <Image src={img.url} alt={img.name} fill className="object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleOpenBodyImageCropper(img)}
+                      className="absolute top-1.5 left-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-primary transition-colors cursor-pointer"
+                      title="Crop, frame, and resize image"
+                    >
+                      <Crop className="h-3 w-3" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => removeBodyImage(img.id)}
@@ -897,6 +979,18 @@ To insert images in different sections, set your cursor there and click "+ Inser
           </Button>
         </div>
       </div>
+
+      {/* Interactive Image Cropper & Framing Modal */}
+      {isCropModalOpen && cropImageSrc && (
+        <ImageCropModal
+          open={isCropModalOpen}
+          onOpenChange={setIsCropModalOpen}
+          imageSrc={cropImageSrc}
+          title={cropModalTitle}
+          initialAspectRatio={cropAspectRatio}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </div>
   );
 }

@@ -46,6 +46,7 @@ import {
   X,
   Languages,
   ImageIcon,
+  Crop,
   ShieldCheck,
   AlertCircle,
   Trash2,
@@ -55,6 +56,7 @@ import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
 import { EditorStats } from "@/components/editor/TiptapEditor";
+import { ImageCropModal, type CropResult, type AspectRatioOption } from "./ImageCropModal";
 
 interface PostFormProps {
   initialData?: {
@@ -131,10 +133,14 @@ export function PostForm({ initialData }: PostFormProps) {
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
 
-  // Cover image upload
+  // Cover image upload & framing
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string>("");
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string>("");
+  const [cropAspectRatio, setCropAspectRatio] = useState<AspectRatioOption>("16:9");
+  const [cropModalTitle, setCropModalTitle] = useState("Crop & Frame Cover Image");
 
   // Auto-generate slug when title changes (if not manually overridden)
   const handleTitleChange = (newTitle: string) => {
@@ -152,7 +158,7 @@ export function PostForm({ initialData }: PostFormProps) {
     toast.info(`Generated slug: ${generated}`);
   };
 
-  // Cover image file change handler with client-side compression
+  // Cover image file change handler: opens interactive cropper
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
@@ -162,51 +168,59 @@ export function PostForm({ initialData }: PostFormProps) {
       return;
     }
 
+    const objectUrl = URL.createObjectURL(rawFile);
+    setCropImageSrc(objectUrl);
+    setCropAspectRatio("16:9");
+    setCropModalTitle("Crop & Frame Cover Image");
+    setIsCropModalOpen(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // Re-open cropper on existing cover photo
+  const handleOpenCoverCropper = () => {
+    const activeCover = coverImage || coverPreviewUrl;
+    if (!activeCover) {
+      fileInputRef.current?.click();
+      return;
+    }
+    setCropImageSrc(activeCover);
+    setCropAspectRatio("16:9");
+    setCropModalTitle("Re-frame & Adjust Cover Image");
+    setIsCropModalOpen(true);
+  };
+
+  // Process and save cropped cover image
+  const handleCoverCropComplete = async (result: CropResult) => {
     try {
       setIsUploadingCover(true);
+      // Immediately set dataUrl for instant visual feedback
+      setCoverPreviewUrl(result.dataUrl);
+      setCoverImage(result.dataUrl);
+      setSaveStatus("unsaved");
 
-      // 1. Instant client-side compression to lightweight WebP (< 300KB)
-      const { file: compressedFile, dataUrl } = await compressImageClient(rawFile);
-
-      // 2. Set instant preview and fallback immediately so it is NEVER lost
-      if (dataUrl) {
-        setCoverPreviewUrl(dataUrl);
-        setCoverImage(dataUrl);
-        setSaveStatus("unsaved");
-      }
-
-      // 3. Upload the compressed file to server / Vercel Blob
+      // Upload the framed WebP file to server / Vercel Blob
       const formData = new FormData();
-      formData.append("file", compressedFile);
+      formData.append("file", result.file);
 
       const res = await fetch("/api/admin/upload", {
         method: "POST",
         body: formData,
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to upload cover image");
-      }
-
-      const data = await res.json();
-      if (data?.url) {
-        setCoverImage(data.url);
-        setCoverPreviewUrl(data.url);
-        setSaveStatus("unsaved");
-        toast.success("Cover image uploaded and optimized!");
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.url) {
+          setCoverImage(data.url);
+          setCoverPreviewUrl(data.url);
+          setSaveStatus("unsaved");
+          toast.success("Cover image framed and uploaded!");
+        }
       }
     } catch (err) {
-      console.warn("Server upload notice:", err);
-      // Keep the compressed dataUrl fallback intact if already set
-      if (!coverImage && !coverPreviewUrl) {
-        toast.error(err instanceof Error ? err.message : "Cover upload failed");
-      } else {
-        toast.info("Image compressed and attached to post");
-      }
+      console.warn("Upload fallback notice:", err);
+      toast.info("Image cropped and saved locally");
     } finally {
       setIsUploadingCover(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -936,10 +950,21 @@ export function PostForm({ initialData }: PostFormProps) {
                       type="button"
                       size="sm"
                       variant="secondary"
+                      onClick={handleOpenCoverCropper}
+                      className="h-8 text-xs font-mono gap-1.5 bg-background/90 text-foreground hover:bg-background"
+                      title="Crop, zoom, or change frame aspect ratio"
+                    >
+                      <Crop className="h-3.5 w-3.5" />
+                      <span>Crop & Frame</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
                       onClick={() => fileInputRef.current?.click()}
                       className="h-8 text-xs font-mono"
                     >
-                      Change Cover Image
+                      Change Image
                     </Button>
                     <Button
                       type="button"
@@ -1323,18 +1348,31 @@ export function PostForm({ initialData }: PostFormProps) {
                         unoptimized={Boolean(coverImage?.startsWith("data:") || coverImage?.startsWith("blob:"))}
                         className="object-cover"
                       />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2 h-7 px-2 text-xs"
-                        onClick={() => {
-                          setCoverImage("");
-                          setSaveStatus("unsaved");
-                        }}
-                      >
-                        Remove
-                      </Button>
+                      <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 px-2 text-xs gap-1 shadow-xs bg-background/90 text-foreground"
+                          onClick={handleOpenCoverCropper}
+                          title="Crop & Frame Image"
+                        >
+                          <Crop className="h-3 w-3" />
+                          <span>Crop</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="h-7 px-2 text-xs shadow-xs"
+                          onClick={() => {
+                            setCoverImage("");
+                            setSaveStatus("unsaved");
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
                     </div>
                   ) : null}
 
@@ -1492,6 +1530,16 @@ export function PostForm({ initialData }: PostFormProps) {
               </div>
             </div>
           )}
+
+      {/* Interactive Image Cropper & Framing Modal */}
+      <ImageCropModal
+        open={isCropModalOpen}
+        onOpenChange={setIsCropModalOpen}
+        imageSrc={cropImageSrc}
+        title={cropModalTitle}
+        initialAspectRatio={cropAspectRatio}
+        onCropComplete={handleCoverCropComplete}
+      />
     </div>
   );
 }

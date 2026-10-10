@@ -47,9 +47,11 @@ import {
   Command,
   RefreshCw,
   CheckCircle2,
+  Crop,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
+import { ImageCropModal, type CropResult, type AspectRatioOption } from "@/components/admin/ImageCropModal";
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -89,6 +91,13 @@ export function EditorToolbar({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const directFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Interactive Image Cropping & Framing
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState("");
+  const [cropModalTitle, setCropModalTitle] = useState("Crop & Frame Image");
+  const [cropAspectRatio, setCropAspectRatio] = useState<AspectRatioOption>("free");
+  const [cropTarget, setCropTarget] = useState<"dialog" | "direct">("dialog");
 
   if (!editor) return null;
 
@@ -139,6 +148,7 @@ export function EditorToolbar({
     toast.success("Image inserted into blog body");
   };
 
+  // Handle file chosen from inside the Image Dialog -> opens interactive cropper
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -150,51 +160,15 @@ export function EditorToolbar({
 
     const localUrl = URL.createObjectURL(file);
     setLocalPreviewUrl(localUrl);
-
-    try {
-      setIsUploading(true);
-      const { file: compressedFile, dataUrl } = await compressImageClient(file);
-      if (dataUrl) {
-        setLocalPreviewUrl(dataUrl);
-        setImageUrl(dataUrl);
-      }
-
-      let uploadedUrl = "";
-      if (onImageUpload) {
-        uploadedUrl = await onImageUpload(compressedFile);
-      } else {
-        const formData = new FormData();
-        formData.append("file", compressedFile);
-        const res = await fetch("/api/admin/upload", {
-          method: "POST",
-          body: formData,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          uploadedUrl = data.url;
-        } else if (dataUrl) {
-          uploadedUrl = dataUrl;
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Failed to upload image");
-        }
-      }
-
-      setImageUrl(uploadedUrl || dataUrl);
-      toast.success("Image uploaded! Ready to insert.");
-    } catch (err) {
-      if (!imageUrl && !localPreviewUrl) {
-        setLocalPreviewUrl("");
-        toast.error(err instanceof Error ? err.message : "Upload failed");
-      } else {
-        toast.info("Image compressed and ready");
-      }
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
+    setCropImageSrc(localUrl);
+    setCropModalTitle("Crop & Frame Body Image");
+    setCropAspectRatio("free");
+    setCropTarget("dialog");
+    setIsCropModalOpen(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // Quick 1-click upload from toolbar -> opens interactive cropper before inserting
   const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
@@ -204,45 +178,83 @@ export function EditorToolbar({
       return;
     }
 
-    try {
-      toast.loading("Optimizing and inserting image...", { id: "direct-image-upload" });
-      const { file: compressedFile, dataUrl } = await compressImageClient(rawFile);
+    const objectUrl = URL.createObjectURL(rawFile);
+    setCropImageSrc(objectUrl);
+    setCropModalTitle("Crop & Frame Image for Blog Body");
+    setCropAspectRatio("16:9");
+    setCropTarget("direct");
+    setIsCropModalOpen(true);
+    if (directFileInputRef.current) directFileInputRef.current.value = "";
+  };
 
-      let uploadedUrl = "";
-      if (onImageUpload) {
-        uploadedUrl = await onImageUpload(compressedFile);
-      } else {
-        const formData = new FormData();
-        formData.append("file", compressedFile);
-        const res = await fetch("/api/admin/upload", {
-          method: "POST",
-          body: formData,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          uploadedUrl = data.url;
-        } else if (dataUrl) {
-          uploadedUrl = dataUrl;
+  // Handle crop completion for body images
+  const handleCropComplete = async (result: CropResult) => {
+    if (cropTarget === "direct") {
+      try {
+        toast.loading("Uploading framed image...", { id: "direct-image-upload" });
+        let uploadedUrl = "";
+        if (onImageUpload) {
+          uploadedUrl = await onImageUpload(result.file);
         } else {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Failed to upload image");
+          const formData = new FormData();
+          formData.append("file", result.file);
+          const res = await fetch("/api/admin/upload", {
+            method: "POST",
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            uploadedUrl = data.url;
+          }
         }
+
+        const finalSrc = uploadedUrl || result.dataUrl;
+        editor
+          .chain()
+          .focus()
+          .setImage({ src: finalSrc, alt: "Blog illustration" })
+          .run();
+        toast.success("Image framed and inserted into blog body!", { id: "direct-image-upload" });
+      } catch {
+        editor
+          .chain()
+          .focus()
+          .setImage({ src: result.dataUrl, alt: "Blog illustration" })
+          .run();
+        toast.info("Image inserted into blog body", { id: "direct-image-upload" });
       }
+    } else {
+      // Crop completed from within Image Dialog
+      try {
+        setIsUploading(true);
+        setLocalPreviewUrl(result.dataUrl);
+        setImageUrl(result.dataUrl);
 
-      const finalSrc = uploadedUrl || dataUrl;
-      editor
-        .chain()
-        .focus()
-        .setImage({ src: finalSrc, alt: rawFile.name.replace(/\.[^/.]+$/, "") })
-        .run();
+        let uploadedUrl = "";
+        if (onImageUpload) {
+          uploadedUrl = await onImageUpload(result.file);
+        } else {
+          const formData = new FormData();
+          formData.append("file", result.file);
+          const res = await fetch("/api/admin/upload", {
+            method: "POST",
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            uploadedUrl = data.url;
+          }
+        }
 
-      toast.success("Image inserted into blog body!", { id: "direct-image-upload" });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload failed", {
-        id: "direct-image-upload",
-      });
-    } finally {
-      if (directFileInputRef.current) directFileInputRef.current.value = "";
+        if (uploadedUrl) {
+          setImageUrl(uploadedUrl);
+        }
+        toast.success("Image cropped & framed! Click 'Insert into Blog' to place it.");
+      } catch {
+        toast.info("Image cropped and ready to insert.");
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -748,7 +760,27 @@ export function EditorToolbar({
             </div>
 
             {(imageUrl || localPreviewUrl) && (
-              <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground">Image Preview</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setCropImageSrc(imageUrl || localPreviewUrl);
+                      setCropModalTitle("Crop & Re-frame Body Image");
+                      setCropAspectRatio("free");
+                      setCropTarget("dialog");
+                      setIsCropModalOpen(true);
+                    }}
+                    className="h-7 text-xs font-mono gap-1.5 text-primary hover:text-primary"
+                  >
+                    <Crop className="h-3 w-3" />
+                    <span>Crop & Frame</span>
+                  </Button>
+                </div>
+                <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl || localPreviewUrl}
@@ -768,7 +800,8 @@ export function EditorToolbar({
                   </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
@@ -939,6 +972,18 @@ export function EditorToolbar({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Interactive Image Cropper & Framing Modal */}
+      {isCropModalOpen && cropImageSrc && (
+        <ImageCropModal
+          open={isCropModalOpen}
+          onOpenChange={setIsCropModalOpen}
+          imageSrc={cropImageSrc}
+          title={cropModalTitle}
+          initialAspectRatio={cropAspectRatio}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </>
   );
 }
