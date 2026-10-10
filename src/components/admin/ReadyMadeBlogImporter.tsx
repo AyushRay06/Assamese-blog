@@ -22,6 +22,8 @@ import {
   FileCode,
   ArrowRight,
   ExternalLink,
+  RotateCcw,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +44,14 @@ export function ReadyMadeBlogImporter() {
   const [language, setLanguage] = useState<"EN" | "AS">("EN");
   const [tags, setTags] = useState("");
   const [status, setStatus] = useState<"DRAFT" | "PUBLISHED">("PUBLISHED");
+
+  // Crash Protection / Recovery State
+  const [hasLocalDraft, setHasLocalDraft] = useState(false);
+  const [localDraftInfo, setLocalDraftInfo] = useState<{
+    timestamp: number;
+    wordCount: number;
+    title: string;
+  } | null>(null);
 
   // Cover image
   const [coverImage, setCoverImage] = useState("");
@@ -246,6 +256,115 @@ export function ReadyMadeBlogImporter() {
     }
   };
 
+  // Check for auto-saved crash draft on mount
+  React.useEffect(() => {
+    try {
+      const rawStored = localStorage.getItem("borkoto_blog_import_backup");
+      if (rawStored) {
+        const parsed = JSON.parse(rawStored);
+        const hasContent = Boolean(
+          (parsed.title && parsed.title.trim().length > 0) ||
+          (parsed.content && parsed.content.trim().length > 0)
+        );
+
+        if (hasContent && parsed.timestamp) {
+          const plainText = (parsed.content || "").replace(/<[^>]+>/g, " ").trim();
+          const words = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
+          setLocalDraftInfo({
+            timestamp: parsed.timestamp,
+            wordCount: words,
+            title: parsed.title || "Untitled Import Draft",
+          });
+          setHasLocalDraft(true);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not load import backup:", err);
+    }
+  }, []);
+
+  // Real-time Crash Protection: Continuous local auto-backup debounced by 600ms
+  React.useEffect(() => {
+    if (!title.trim() && !content.trim() && !coverImage && !excerpt.trim()) return;
+
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          "borkoto_blog_import_backup",
+          JSON.stringify({
+            title,
+            slug,
+            excerpt,
+            content,
+            coverImage,
+            language,
+            tags,
+            inBodyImages,
+            timestamp: Date.now(),
+          })
+        );
+      } catch (err) {
+        console.warn("Could not save import backup:", err);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [title, slug, excerpt, content, coverImage, language, tags, inBodyImages]);
+
+  // Restore recovered crash draft
+  const handleRestoreLocalDraft = () => {
+    try {
+      const rawStored = localStorage.getItem("borkoto_blog_import_backup");
+      if (rawStored) {
+        const parsed = JSON.parse(rawStored);
+        if (parsed.title !== undefined) setTitle(parsed.title);
+        if (parsed.slug !== undefined) setSlug(parsed.slug);
+        if (parsed.excerpt !== undefined) setExcerpt(parsed.excerpt);
+        if (parsed.content !== undefined) setContent(parsed.content);
+        if (parsed.coverImage !== undefined) setCoverImage(parsed.coverImage);
+        if (parsed.language !== undefined) setLanguage(parsed.language);
+        if (parsed.tags !== undefined) setTags(parsed.tags);
+        if (Array.isArray(parsed.inBodyImages)) setInBodyImages(parsed.inBodyImages);
+
+        setHasLocalDraft(false);
+        setLocalDraftInfo(null);
+
+        const timeStr = parsed.timestamp
+          ? new Date(parsed.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : "previous session";
+        toast.success(`Unsaved ready-made draft from ${timeStr} successfully restored!`);
+      }
+    } catch {
+      toast.error("Failed to restore draft");
+    }
+  };
+
+  // Discard local crash draft
+  const handleDiscardLocalDraft = () => {
+    try {
+      localStorage.removeItem("borkoto_blog_import_backup");
+      setHasLocalDraft(false);
+      setLocalDraftInfo(null);
+      toast.info("Local import session backup discarded.");
+    } catch {
+      setHasLocalDraft(false);
+      setLocalDraftInfo(null);
+    }
+  };
+
+  // Browser Unload Warning
+  React.useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (title.trim() || content.trim()) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [title, content]);
+
   // Submit to publish
   const handleSubmit = (targetStatus: "DRAFT" | "PUBLISHED") => {
     if (!title.trim()) {
@@ -326,6 +445,14 @@ export function ReadyMadeBlogImporter() {
             ? "Ready-made blog published successfully!"
             : "Ready-made blog saved as draft!"
         );
+
+        // Clean up crash recovery backup upon successful save/publish
+        try {
+          localStorage.removeItem("borkoto_blog_import_backup");
+          setHasLocalDraft(false);
+          setLocalDraftInfo(null);
+        } catch {}
+
         router.push("/admin");
         router.refresh();
       } catch (err: unknown) {
@@ -336,6 +463,60 @@ export function ReadyMadeBlogImporter() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-16">
+      {/* Crash Recovery Notification Banner */}
+      {hasLocalDraft && localDraftInfo && (
+        <div className="p-4 rounded-2xl border border-amber-300/80 bg-amber-50/90 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100 shadow-sm transition-all animate-in fade-in slide-in-from-top-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-amber-200/70 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 shrink-0 mt-0.5 sm:mt-0">
+                <RotateCcw className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-semibold text-sm">Unsaved Ready-Made Blog Recovered</h4>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+                    Crash Protection
+                  </span>
+                </div>
+                <p className="text-xs text-amber-800 dark:text-amber-200/90 mt-0.5 leading-relaxed">
+                  We detected an unsaved session from{" "}
+                  <strong>
+                    {new Date(localDraftInfo.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </strong>{" "}
+                  ({new Date(localDraftInfo.timestamp).toLocaleDateString()}) with approx{" "}
+                  <strong>{localDraftInfo.wordCount} words</strong>
+                  {localDraftInfo.title ? ` ("${localDraftInfo.title}")` : ""}.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <Button
+                size="sm"
+                type="button"
+                onClick={handleRestoreLocalDraft}
+                className="h-8 text-xs bg-amber-800 hover:bg-amber-900 text-white font-medium shadow-xs"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                Restore Work
+              </Button>
+              <Button
+                size="sm"
+                type="button"
+                variant="outline"
+                onClick={handleDiscardLocalDraft}
+                className="h-8 text-xs border-amber-300 dark:border-amber-800 hover:bg-amber-200/50 dark:hover:bg-amber-900/40 text-amber-900 dark:text-amber-200"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Discard
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. File Dropzone & Import Assistant */}
       <div
         onDragOver={(e) => {

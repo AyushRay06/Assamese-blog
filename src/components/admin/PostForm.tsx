@@ -46,6 +46,10 @@ import {
   X,
   Languages,
   ImageIcon,
+  ShieldCheck,
+  AlertCircle,
+  Trash2,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -88,6 +92,13 @@ export function PostForm({ initialData }: PostFormProps) {
     paragraphs: 0,
   });
   const [hasLocalDraft, setHasLocalDraft] = useState(false);
+  const [editorKey, setEditorKey] = useState(0);
+  const [localDraftInfo, setLocalDraftInfo] = useState<{
+    timestamp: number;
+    wordCount: number;
+    title: string;
+  } | null>(null);
+  const [lastBackedUpAt, setLastBackedUpAt] = useState<number | null>(null);
 
   // Form States
   const [title, setTitle] = useState(initialData?.title || "");
@@ -311,6 +322,15 @@ export function PostForm({ initialData }: PostFormProps) {
         setStatus(targetStatus);
         setSaveStatus("saved");
 
+        // Clean up crash recovery backup upon successful save/publish
+        try {
+          const backupKey = `borkoto_post_backup_${initialData?.id || "new"}`;
+          localStorage.removeItem(backupKey);
+          localStorage.removeItem(`prof_blog_backup_${initialData?.id || "new"}`);
+          setHasLocalDraft(false);
+          setLocalDraftInfo(null);
+        } catch {}
+
         if (!isEditing && targetStatus === "PUBLISHED") {
           router.push("/admin");
         } else if (!isEditing && resId) {
@@ -369,64 +389,136 @@ export function PostForm({ initialData }: PostFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, slug, excerpt, coverImage, language, contentHtml, tagInput]);
 
-  // Check for local storage auto-saved draft
+  // Check for crash recovery / local storage auto-saved draft on mount
   useEffect(() => {
-    const backupKey = `prof_blog_backup_${initialData?.id || "new"}`;
+    const backupKey = `borkoto_post_backup_${initialData?.id || "new"}`;
+    const legacyKey = `prof_blog_backup_${initialData?.id || "new"}`;
     try {
-      const stored = localStorage.getItem(backupKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.timestamp && !title && !contentHtml && (parsed.title || parsed.contentHtml)) {
+      const rawStored = localStorage.getItem(backupKey) || localStorage.getItem(legacyKey);
+      if (rawStored) {
+        const parsed = JSON.parse(rawStored);
+        const hasContent = Boolean(
+          (parsed.title && parsed.title.trim().length > 0) ||
+          (parsed.contentHtml && parsed.contentHtml.trim().length > 0) ||
+          (parsed.contentJson && typeof parsed.contentJson === "object" && parsed.contentJson.content?.length > 0)
+        );
+
+        // Check if the backup has content different from what is already loaded
+        const isDifferentFromInitial = isEditing
+          ? (parsed.contentHtml && parsed.contentHtml !== (initialData?.contentHtml || "")) ||
+            (parsed.title && parsed.title !== (initialData?.title || ""))
+          : hasContent;
+
+        if (hasContent && isDifferentFromInitial && parsed.timestamp) {
+          const plainText = parsed.contentHtml
+            ? parsed.contentHtml.replace(/<[^>]+>/g, " ").trim()
+            : "";
+          const words = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
+
+          setLocalDraftInfo({
+            timestamp: parsed.timestamp,
+            wordCount: words,
+            title: parsed.title || "Untitled Draft",
+          });
           setHasLocalDraft(true);
         }
       }
-    } catch {}
+    } catch (err) {
+      console.warn("Could not read local backup:", err);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-backup to localStorage
+  // Real-time Crash Protection: Continuous local auto-backup debounced by 600ms
   useEffect(() => {
-    if (!title && !contentHtml) return;
-    const backupKey = `prof_blog_backup_${initialData?.id || "new"}`;
-    try {
-      localStorage.setItem(
-        backupKey,
-        JSON.stringify({
-          title,
-          slug,
-          excerpt,
-          coverImage,
-          language,
-          tagInput,
-          contentHtml,
-          contentJson,
-          timestamp: Date.now(),
-        })
-      );
-    } catch {}
+    if (!title.trim() && !contentHtml.trim() && !coverImage && !excerpt.trim()) return;
+
+    const backupKey = `borkoto_post_backup_${initialData?.id || "new"}`;
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          backupKey,
+          JSON.stringify({
+            title,
+            slug,
+            excerpt,
+            coverImage,
+            language,
+            tagInput,
+            contentHtml,
+            contentJson,
+            timestamp: Date.now(),
+          })
+        );
+        setLastBackedUpAt(Date.now());
+      } catch (err) {
+        console.warn("Local storage backup quota exceeded or unavailable:", err);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
   }, [title, slug, excerpt, coverImage, language, tagInput, contentHtml, contentJson, initialData?.id]);
 
+  // Restore recovered crash draft
   const handleRestoreLocalDraft = () => {
-    const backupKey = `prof_blog_backup_${initialData?.id || "new"}`;
+    const backupKey = `borkoto_post_backup_${initialData?.id || "new"}`;
+    const legacyKey = `prof_blog_backup_${initialData?.id || "new"}`;
     try {
-      const stored = localStorage.getItem(backupKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.title) setTitle(parsed.title);
-        if (parsed.slug) setSlug(parsed.slug);
-        if (parsed.excerpt) setExcerpt(parsed.excerpt);
-        if (parsed.coverImage) setCoverImage(parsed.coverImage);
-        if (parsed.language) setLanguage(parsed.language);
-        if (parsed.tagInput) setTagInput(parsed.tagInput);
-        if (parsed.contentHtml) setContentHtml(parsed.contentHtml);
-        if (parsed.contentJson) setContentJson(parsed.contentJson);
+      const rawStored = localStorage.getItem(backupKey) || localStorage.getItem(legacyKey);
+      if (rawStored) {
+        const parsed = JSON.parse(rawStored);
+        if (parsed.title !== undefined) setTitle(parsed.title);
+        if (parsed.slug !== undefined) setSlug(parsed.slug);
+        if (parsed.excerpt !== undefined) setExcerpt(parsed.excerpt);
+        if (parsed.coverImage !== undefined) setCoverImage(parsed.coverImage);
+        if (parsed.language !== undefined) setLanguage(parsed.language);
+        if (parsed.tagInput !== undefined) setTagInput(parsed.tagInput);
+        if (parsed.contentHtml !== undefined) setContentHtml(parsed.contentHtml);
+        if (parsed.contentJson !== undefined) setContentJson(parsed.contentJson);
+
+        // Remount Tiptap editor with restored document tree
+        setEditorKey((prev) => prev + 1);
         setHasLocalDraft(false);
-        toast.success("Auto-saved local draft restored!");
+        setLocalDraftInfo(null);
+        setSaveStatus("unsaved");
+
+        const timeStr = parsed.timestamp
+          ? new Date(parsed.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : "previous session";
+        toast.success(`Unsaved draft from ${timeStr} successfully restored!`);
       }
     } catch {
-      toast.error("Failed to restore draft");
+      toast.error("Failed to restore local draft");
     }
   };
+
+  // Discard local crash draft
+  const handleDiscardLocalDraft = () => {
+    try {
+      const backupKey = `borkoto_post_backup_${initialData?.id || "new"}`;
+      localStorage.removeItem(backupKey);
+      localStorage.removeItem(`prof_blog_backup_${initialData?.id || "new"}`);
+      setHasLocalDraft(false);
+      setLocalDraftInfo(null);
+      toast.info("Local session backup discarded.");
+    } catch {
+      setHasLocalDraft(false);
+      setLocalDraftInfo(null);
+    }
+  };
+
+  // Browser Unload Warning: prevent accidental tab closure with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (saveStatus === "unsaved" && (title.trim() || contentHtml.trim())) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [saveStatus, title, contentHtml]);
 
   // Keyboard shortcuts (Escape for full screen, Cmd/Ctrl+S for save)
   useEffect(() => {
@@ -529,8 +621,8 @@ export function PostForm({ initialData }: PostFormProps) {
                 </button>
               </div>
 
-              {/* Save Status Badge */}
-              <div className="hidden md:flex items-center gap-1.5 text-xs font-mono">
+              {/* Save Status & Crash Protection Badge */}
+              <div className="hidden md:flex items-center gap-2 text-xs font-mono">
                 {saveStatus === "saved" && (
                   <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="h-3 w-3" />
@@ -549,6 +641,14 @@ export function PostForm({ initialData }: PostFormProps) {
                     <span>Unsaved</span>
                   </span>
                 )}
+                <span className="h-3 w-px bg-border/80" />
+                <span
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground/90"
+                  title="Crash Protection active: all edits are continuously auto-saved locally in your browser"
+                >
+                  <ShieldCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                  <span className="hidden lg:inline">Crash protected</span>
+                </span>
               </div>
             </div>
 
@@ -758,6 +858,60 @@ export function PostForm({ initialData }: PostFormProps) {
             </div>
           </header>
 
+          {/* Crash Recovery Notification Banner (visible across all view modes) */}
+          {hasLocalDraft && localDraftInfo && (
+            <div className="mx-4 sm:mx-8 lg:mx-12 mt-5 p-4 rounded-xl border border-amber-300/80 bg-amber-50/90 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100 shadow-sm transition-all animate-in fade-in slide-in-from-top-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-amber-200/70 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 shrink-0 mt-0.5 sm:mt-0">
+                    <RotateCcw className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-semibold text-sm">Unsaved Changes Recovered</h4>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+                        Crash Protection
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-800 dark:text-amber-200/90 mt-0.5 leading-relaxed">
+                      We recovered an unsaved draft from{" "}
+                      <strong>
+                        {new Date(localDraftInfo.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </strong>{" "}
+                      ({new Date(localDraftInfo.timestamp).toLocaleDateString()}) with approx{" "}
+                      <strong>{localDraftInfo.wordCount} words</strong>
+                      {localDraftInfo.title ? ` ("${localDraftInfo.title}")` : ""}.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <Button
+                    size="sm"
+                    type="button"
+                    onClick={handleRestoreLocalDraft}
+                    className="h-8 text-xs bg-amber-800 hover:bg-amber-900 text-white font-medium shadow-xs"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    Restore Work
+                  </Button>
+                  <Button
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                    onClick={handleDiscardLocalDraft}
+                    className="h-8 text-xs border-amber-300 dark:border-amber-800 hover:bg-amber-200/50 dark:hover:bg-amber-900/40 text-amber-900 dark:text-amber-200"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    Discard
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* VIEW MODE 1: FOCUSED WRITING CANVAS */}
           {viewMode === "write" && (
             <main
@@ -766,33 +920,6 @@ export function PostForm({ initialData }: PostFormProps) {
                 getCanvasWidthClass()
               )}
             >
-              {/* Local Draft Recovery Notification */}
-              {hasLocalDraft && (
-                <div className="mb-6 flex items-center justify-between p-3.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200 text-xs shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-amber-600 shrink-0" />
-                    <span>An auto-saved draft from an earlier session was recovered in your browser.</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="h-7 text-xs bg-amber-700 hover:bg-amber-800 text-white"
-                      onClick={handleRestoreLocalDraft}
-                    >
-                      Restore Draft
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-xs"
-                      onClick={() => setHasLocalDraft(false)}
-                    >
-                      Dismiss
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               {/* Cover Image Banner (if set) or quick-add button */}
               {coverImage ? (
@@ -939,7 +1066,8 @@ export function PostForm({ initialData }: PostFormProps) {
               {/* Full-Screen Tiptap Editor */}
               <div className="pt-2">
                 <TiptapEditor
-                  initialContent={initialData?.content}
+                  key={`tiptap-write-${editorKey}`}
+                  initialContent={contentJson || initialData?.content}
                   language={language}
                   onChange={handleEditorChange}
                   isFullScreen={true}
@@ -997,7 +1125,8 @@ export function PostForm({ initialData }: PostFormProps) {
                 </div>
 
                 <TiptapEditor
-                  initialContent={initialData?.content}
+                  key={`tiptap-split-${editorKey}`}
+                  initialContent={contentJson || initialData?.content}
                   language={language}
                   onChange={handleEditorChange}
                   isFullScreen={true}
