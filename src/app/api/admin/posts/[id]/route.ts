@@ -46,12 +46,16 @@ export async function PATCH(
 
   try {
     const rawData = await request.json();
+    const rawTitle = String(rawData.title || "").trim();
+    const rawSlug = String(rawData.slug || "").trim() || rawTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const rawCover = rawData.coverImage ? String(rawData.coverImage).trim() : null;
+    const rawExcerpt = rawData.excerpt ? String(rawData.excerpt).trim() : null;
 
     const sanitizedData = {
-      title: String(rawData.title || "").trim(),
-      slug: String(rawData.slug || "").trim(),
-      excerpt: rawData.excerpt ? String(rawData.excerpt).trim() : null,
-      coverImage: rawData.coverImage ? String(rawData.coverImage).trim() : null,
+      title: rawTitle,
+      slug: rawSlug || `post-${Date.now()}`,
+      excerpt: rawExcerpt && rawExcerpt !== "" ? rawExcerpt : null,
+      coverImage: rawCover && rawCover !== "" ? rawCover : null,
       content:
         typeof rawData.content === "object" && rawData.content !== null
           ? rawData.content
@@ -61,7 +65,7 @@ export async function PATCH(
       status: rawData.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
       publishedAt: rawData.publishedAt ? String(rawData.publishedAt) : null,
       tags: Array.isArray(rawData.tags)
-        ? rawData.tags.map((t: unknown) => String(t).trim()).filter(Boolean)
+        ? Array.from(new Set(rawData.tags.map((t: unknown) => String(t).trim()).filter(Boolean)))
         : [],
     };
 
@@ -109,14 +113,17 @@ export async function PATCH(
 
     let publishedAt = existingPost.publishedAt;
     if (validated.status === "PUBLISHED") {
-      if (!publishedAt) {
-        publishedAt = validated.publishedAt ? new Date(validated.publishedAt) : new Date();
-      } else if (validated.publishedAt) {
-        publishedAt = new Date(validated.publishedAt);
+      if (validated.publishedAt) {
+        const d = new Date(validated.publishedAt);
+        publishedAt = isNaN(d.getTime()) ? (publishedAt || new Date()) : d;
+      } else if (!publishedAt) {
+        publishedAt = new Date();
       }
     } else {
       publishedAt = null;
     }
+
+    const uniqueTags = Array.from(new Set(validated.tags));
 
     const updated = await prisma.post.update({
       where: { id },
@@ -133,7 +140,7 @@ export async function PATCH(
         readingTime,
         tags: {
           set: [],
-          connectOrCreate: validated.tags.map((tag) => ({
+          connectOrCreate: uniqueTags.map((tag) => ({
             where: { name: tag },
             create: { name: tag },
           })),

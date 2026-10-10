@@ -40,11 +40,16 @@ export async function POST(request: NextRequest) {
     const rawData = await request.json();
 
     // Sanitize and ensure pure primitives
+    const rawTitle = String(rawData.title || "").trim();
+    const rawSlug = String(rawData.slug || "").trim() || rawTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const rawCover = rawData.coverImage ? String(rawData.coverImage).trim() : null;
+    const rawExcerpt = rawData.excerpt ? String(rawData.excerpt).trim() : null;
+
     const sanitizedData = {
-      title: String(rawData.title || "").trim(),
-      slug: String(rawData.slug || "").trim(),
-      excerpt: rawData.excerpt ? String(rawData.excerpt).trim() : null,
-      coverImage: rawData.coverImage ? String(rawData.coverImage).trim() : null,
+      title: rawTitle,
+      slug: rawSlug || `post-${Date.now()}`,
+      excerpt: rawExcerpt && rawExcerpt !== "" ? rawExcerpt : null,
+      coverImage: rawCover && rawCover !== "" ? rawCover : null,
       content:
         typeof rawData.content === "object" && rawData.content !== null
           ? rawData.content
@@ -54,7 +59,7 @@ export async function POST(request: NextRequest) {
       status: rawData.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
       publishedAt: rawData.publishedAt ? String(rawData.publishedAt) : null,
       tags: Array.isArray(rawData.tags)
-        ? rawData.tags.map((t: unknown) => String(t).trim()).filter(Boolean)
+        ? Array.from(new Set(rawData.tags.map((t: unknown) => String(t).trim()).filter(Boolean)))
         : [],
     };
 
@@ -89,12 +94,17 @@ export async function POST(request: NextRequest) {
     const plainText = extractPlainText(sanitizedHtml);
     const readingTime = calculateReadingTime(plainText, validated.language as LanguageCode);
 
-    const publishedAt =
-      validated.status === "PUBLISHED"
-        ? validated.publishedAt
-          ? new Date(validated.publishedAt)
-          : new Date()
-        : null;
+    let publishedAt: Date | null = null;
+    if (validated.status === "PUBLISHED") {
+      if (validated.publishedAt) {
+        const d = new Date(validated.publishedAt);
+        publishedAt = isNaN(d.getTime()) ? new Date() : d;
+      } else {
+        publishedAt = new Date();
+      }
+    }
+
+    const uniqueTags = Array.from(new Set(validated.tags));
 
     const post = await prisma.post.create({
       data: {
@@ -109,7 +119,7 @@ export async function POST(request: NextRequest) {
         publishedAt,
         readingTime,
         tags: {
-          connectOrCreate: validated.tags.map((tag) => ({
+          connectOrCreate: uniqueTags.map((tag) => ({
             where: { name: tag },
             create: { name: tag },
           })),
