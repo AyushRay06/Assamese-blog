@@ -10,9 +10,7 @@ import {
   Trash2,
   CheckCheck,
   RotateCcw,
-  Loader2,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +29,7 @@ import {
   toggleContactMessageStatusAction,
 } from "@/actions/contacts";
 import { toast } from "sonner";
+import { cn } from "cn";
 
 interface ContactMessageItem {
   id: string;
@@ -50,13 +49,9 @@ export function ContactMessagesTable({ messages }: ContactMessagesTableProps) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
 
-  // Dialog state for deleting a single message
   const [messageToDelete, setMessageToDelete] = React.useState<ContactMessageItem | null>(null);
-
-  // Dialog state for deleting all messages
   const [isDeleteAllOpen, setIsDeleteAllOpen] = React.useState(false);
 
-  // Handler for single message deletion
   const handleDeleteSingle = async () => {
     if (!messageToDelete) return;
 
@@ -78,7 +73,6 @@ export function ContactMessagesTable({ messages }: ContactMessagesTableProps) {
     });
   };
 
-  // Handler for deleting all messages
   const handleDeleteAll = async () => {
     startTransition(async () => {
       try {
@@ -97,7 +91,6 @@ export function ContactMessagesTable({ messages }: ContactMessagesTableProps) {
     });
   };
 
-  // Handler for toggling status (Read <-> Unread)
   const handleToggleStatus = async (id: string) => {
     startTransition(async () => {
       try {
@@ -118,26 +111,15 @@ export function ContactMessagesTable({ messages }: ContactMessagesTableProps) {
 
   if (messages.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <span>Incoming Contact Queries</span>
-          </CardTitle>
-          <CardDescription>
-            Messages submitted by visitors via the public website contact form.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
-            <MessageSquare className="h-8 w-8 stroke-[1.5] mb-2 text-muted-foreground/40" />
-            <p className="text-sm font-medium">No contact messages received yet</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">
-              When people reach out via the contact form, their queries will appear here.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="rounded-2xl border border-dashed border-border/50 bg-card/20 p-12 text-center">
+        <div className="flex flex-col items-center justify-center text-muted-foreground">
+          <MessageSquare className="h-8 w-8 stroke-[1.5] mb-2 text-muted-foreground/40" />
+          <h3 className="text-base font-semibold text-foreground">No contact inquiries yet</h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+            When visitors send questions or research invitations through the contact form, they will appear here.
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -145,230 +127,208 @@ export function ContactMessagesTable({ messages }: ContactMessagesTableProps) {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
+      <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-xs p-6 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/30 pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                 <Mail className="h-4 w-4 text-primary" />
-                <span>Incoming Contact Queries ({messages.length})</span>
-                {unreadCount > 0 && (
-                  <Badge variant="default" className="text-[10px] font-mono h-5 bg-primary">
-                    {unreadCount} unread
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>
-                Direct queries, research invitations, and correspondence received through the website.
-              </CardDescription>
+                <span>Reader Inquiries ({messages.length})</span>
+              </h2>
+              {unreadCount > 0 && (
+                <Badge variant="default" className="text-[10px] font-mono rounded-full px-2 py-0.5 bg-primary">
+                  {unreadCount} unread
+                </Badge>
+              )}
             </div>
-
-            {/* Bulk actions */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isPending}
-              onClick={() => setIsDeleteAllOpen(true)}
-              className="h-8 text-xs font-mono text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 gap-1.5 self-start sm:self-auto"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span>Clear All Queries</span>
-            </Button>
+            <p className="text-xs text-muted-foreground mt-1">
+              Correspondence submitted by visitors via the public website.
+            </p>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="divide-y divide-border/60">
-            {messages.map((msg) => {
-              const date = new Date(msg.createdAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              });
 
-              const isUnread = msg.status === "UNREAD";
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isPending}
+            onClick={() => setIsDeleteAllOpen(true)}
+            className="h-8 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 rounded-full gap-1.5 self-start sm:self-auto px-3.5"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Clear All</span>
+          </Button>
+        </div>
 
-              return (
-                <div
-                  key={msg.id}
-                  className="py-4 first:pt-0 last:pb-0 flex flex-col gap-2 hover:bg-muted/20 px-2 rounded-sm transition-colors"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-sm text-foreground">
-                        {msg.name}
-                      </span>
-                      <a
-                        href={`mailto:${msg.email}`}
-                        className="text-xs text-primary font-mono hover:underline flex items-center gap-1"
-                      >
-                        <span>&lt;{msg.email}&gt;</span>
-                      </a>
-                    </div>
+        <div className="divide-y divide-border/30">
+          {messages.map((msg) => {
+            const date = new Date(msg.createdAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
 
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{date}</span>
-                      </span>
-                      <Badge
-                        variant={isUnread ? "default" : "secondary"}
-                        className="text-[10px] uppercase font-mono h-5"
-                      >
-                        {msg.status}
-                      </Badge>
-                    </div>
-                  </div>
+            const isUnread = msg.status === "UNREAD";
 
-                  {msg.subject && (
-                    <p className="text-xs font-medium text-foreground/90 font-mono">
-                      Subject: {msg.subject}
-                    </p>
-                  )}
-
-                  <div className="bg-muted/40 p-3 rounded-none text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap border border-border/40">
-                    {msg.message}
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-end gap-2 pt-1 text-xs">
-                    {/* Mark Read/Unread */}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isPending}
-                      onClick={() => handleToggleStatus(msg.id)}
-                      className="h-7 text-[11px] font-mono text-muted-foreground hover:text-foreground gap-1 px-2"
-                      title={isUnread ? "Mark as Read" : "Mark as Unread"}
-                    >
-                      {isUnread ? (
-                        <>
-                          <CheckCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>Mark Read</span>
-                        </>
-                      ) : (
-                        <>
-                          <RotateCcw className="h-3 w-3" />
-                          <span>Mark Unread</span>
-                        </>
-                      )}
-                    </Button>
-
-                    {/* Reply via email */}
+            return (
+              <div
+                key={msg.id}
+                className="py-5 first:pt-0 last:pb-0 flex flex-col gap-3 transition-colors rounded-xl px-2 hover:bg-muted/15"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-sm text-foreground">
+                      {msg.name}
+                    </span>
                     <a
-                      href={`mailto:${msg.email}?subject=Re: ${encodeURIComponent(msg.subject || "Website Inquiry")}`}
-                      className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-[11px] px-2 py-1 rounded-sm hover:bg-primary/5 transition-colors"
+                      href={`mailto:${msg.email}`}
+                      className="text-xs text-primary font-mono hover:underline flex items-center gap-1"
                     >
-                      <span>Reply via Email</span>
-                      <ExternalLink className="h-3 w-3" />
+                      <span>&lt;{msg.email}&gt;</span>
                     </a>
+                  </div>
 
-                    {/* Delete Option */}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isPending}
-                      onClick={() => setMessageToDelete(msg)}
-                      className="h-7 text-[11px] font-mono text-destructive hover:text-destructive hover:bg-destructive/10 gap-1 px-2"
-                      title="Delete this query"
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span>{date}</span>
+                    </span>
+                    <Badge
+                      variant={isUnread ? "default" : "secondary"}
+                      className={cn(
+                        "text-[10px] uppercase font-mono rounded-full px-2 py-0.5",
+                        isUnread ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                      )}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span>Delete</span>
-                    </Button>
+                      {msg.status}
+                    </Badge>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Confirmation Dialog: Delete Single Query */}
+                {msg.subject && (
+                  <p className="text-xs font-semibold text-foreground/90">
+                    Subject: {msg.subject}
+                  </p>
+                )}
+
+                <div className="bg-muted/30 p-4 rounded-xl text-xs text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                  {msg.message}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-1 text-xs">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() => handleToggleStatus(msg.id)}
+                    className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5 px-3 rounded-full hover:bg-muted/50"
+                    title={isUnread ? "Mark as Read" : "Mark as Unread"}
+                  >
+                    {isUnread ? (
+                      <>
+                        <CheckCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>Mark Read</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="h-3 w-3" />
+                        <span>Mark Unread</span>
+                      </>
+                    )}
+                  </Button>
+
+                  <a
+                    href={`mailto:${msg.email}?subject=Re: ${encodeURIComponent(msg.subject || "Website Inquiry")}`}
+                    className="inline-flex items-center gap-1.5 text-primary hover:underline text-xs px-3 py-1 rounded-full hover:bg-primary/5 transition-colors font-medium"
+                  >
+                    <span>Reply</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() => setMessageToDelete(msg)}
+                    className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 px-3 rounded-full"
+                    title="Delete this query"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    <span>Delete</span>
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Delete Single Message Dialog */}
       <AlertDialog
-        open={!!messageToDelete}
+        open={Boolean(messageToDelete)}
         onOpenChange={(open) => !open && setMessageToDelete(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl border-border/40 p-6 shadow-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" />
-              <span>Delete Contact Query?</span>
+            <AlertDialogTitle className="text-lg font-bold">
+              Delete Contact Query?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2 pt-1 text-sm">
-              <p>
-                Are you sure you want to permanently delete the inquiry from{" "}
-                <strong className="text-foreground">{messageToDelete?.name}</strong>{" "}
-                ({messageToDelete?.email})?
-              </p>
-              <p className="text-xs text-muted-foreground">
-                This record will be permanently deleted from the database. This action cannot be undone.
-              </p>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to delete this message from{" "}
+              <strong className="text-foreground">{messageToDelete?.name}</strong> (
+              {messageToDelete?.email})? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteSingle}
+          <AlertDialogFooter className="gap-2 sm:gap-0 mt-4">
+            <AlertDialogCancel
               disabled={isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-1.5"
+              className="text-xs rounded-full px-4"
             >
-              {isPending ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Deleting...</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>Delete Query</span>
-                </>
-              )}
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isPending}
+              onClick={handleDeleteSingle}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs rounded-full px-4"
+            >
+              Delete Query
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Confirmation Dialog: Delete All Queries */}
-      <AlertDialog open={isDeleteAllOpen} onOpenChange={setIsDeleteAllOpen}>
-        <AlertDialogContent>
+      {/* Delete All Messages Dialog */}
+      <AlertDialog
+        open={isDeleteAllOpen}
+        onOpenChange={setIsDeleteAllOpen}
+      >
+        <AlertDialogContent className="rounded-2xl border-border/40 p-6 shadow-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" />
-              <span>Clear All Contact Queries?</span>
+            <AlertDialogTitle className="text-lg font-bold text-destructive">
+              Delete All Contact Queries?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2 pt-1 text-sm">
-              <p>
-                Are you sure you want to delete all{" "}
-                <strong className="text-foreground">{messages.length}</strong> incoming contact
-                queries?
-              </p>
-              <p className="text-xs text-muted-foreground">
-                All visitor contact messages will be permanently removed from your database. This action
-                cannot be undone.
-              </p>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              This will permanently delete all{" "}
+              <strong className="text-foreground">{messages.length}</strong> inquiries from the database.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteAll}
+          <AlertDialogFooter className="gap-2 sm:gap-0 mt-4">
+            <AlertDialogCancel
               disabled={isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-1.5"
+              className="text-xs rounded-full px-4"
             >
-              {isPending ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Clearing all...</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>Delete All Queries</span>
-                </>
-              )}
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isPending}
+              onClick={handleDeleteAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs rounded-full px-4"
+            >
+              Clear All Queries
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -376,5 +336,3 @@ export function ContactMessagesTable({ messages }: ContactMessagesTableProps) {
     </>
   );
 }
-
-export default ContactMessagesTable;

@@ -105,21 +105,21 @@ export function PostsTable({ posts }: PostsTableProps) {
 
   if (posts.length === 0) {
     return (
-      <div className="rounded-none border border-dashed border-border/80 bg-card/40 p-12 text-center">
+      <div className="rounded-2xl border border-dashed border-border/50 bg-card/20 p-12 text-center">
         <h3 className="text-base font-semibold text-foreground">No articles match your current view</h3>
         <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
           Try clearing your search or status filters, or start writing a new bilingual essay.
         </p>
-        <div className="flex items-center justify-center gap-2 mt-4">
+        <div className="flex items-center justify-center gap-2 mt-5">
           <Link
             href="/admin?tab=posts"
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-xs")}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-xs rounded-full px-4")}
           >
             Clear Filters
           </Link>
           <Link
             href="/admin/posts/new"
-            className={cn(buttonVariants({ size: "sm" }), "text-xs")}
+            className={cn(buttonVariants({ size: "sm" }), "text-xs rounded-full px-4")}
           >
             Write New Post
           </Link>
@@ -130,15 +130,15 @@ export function PostsTable({ posts }: PostsTableProps) {
 
   return (
     <>
-      <div className="rounded-none border bg-card shadow-none overflow-hidden">
+      <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-xs shadow-xs overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-[45%]">Title &amp; Slug</TableHead>
-              <TableHead>Language</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Published</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+            <TableRow className="bg-muted/20 border-b border-border/40 hover:bg-muted/20">
+              <TableHead className="w-[45%] text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">Title &amp; Slug</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">Language</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">Status</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">Published</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -181,7 +181,10 @@ export function PostsTable({ posts }: PostsTableProps) {
 
                   {/* Language */}
                   <TableCell>
-                    <Badge variant={post.language === "AS" ? "default" : "secondary"}>
+                    <Badge
+                      variant={post.language === "AS" ? "default" : "secondary"}
+                      className="rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+                    >
                       {langConfig.label} ({langConfig.nativeName})
                     </Badge>
                   </TableCell>
@@ -190,11 +193,12 @@ export function PostsTable({ posts }: PostsTableProps) {
                   <TableCell>
                     <Badge
                       variant={isPublished ? "default" : "outline"}
-                      className={
+                      className={cn(
+                        "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
                         isPublished
                           ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                          : "text-muted-foreground"
-                      }
+                          : "text-muted-foreground border-border/60"
+                      )}
                     >
                       {post.status}
                     </Badge>
@@ -212,7 +216,7 @@ export function PostsTable({ posts }: PostsTableProps) {
                         href={`/admin/posts/${post.id}/edit`}
                         className={cn(
                           buttonVariants({ variant: "ghost", size: "icon" }),
-                          "h-8 w-8"
+                          "h-8 w-8 rounded-full hover:bg-muted/60"
                         )}
                         title="Edit post"
                       >
@@ -223,14 +227,14 @@ export function PostsTable({ posts }: PostsTableProps) {
                         <DropdownMenuTrigger
                           className={cn(
                             buttonVariants({ variant: "ghost", size: "icon" }),
-                            "h-8 w-8"
+                            "h-8 w-8 rounded-full hover:bg-muted/60"
                           )}
                           disabled={isPending}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">Actions</span>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuContent align="end" className="w-44 p-1.5 rounded-xl shadow-lg border-border/40">
                           {isPublished && (
                             <DropdownMenuItem
                               onClick={() => window.open(`/blog/${post.slug}`, "_blank")}
