@@ -106,7 +106,82 @@ export function ImageCropModal({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
 
+  // Safe Image URL (guaranteed untainted same-origin or local blob)
+  const [safeImageSrc, setSafeImageSrc] = useState<string>("");
+  const [isLoadingSafeImage, setIsLoadingSafeImage] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const dragStartRef = useRef<{ clientX: number; clientY: number; startX: number; startY: number } | null>(null);
+
+  // Convert remote/external image to clean local blob or proxy to guarantee untainted canvas
+  useEffect(() => {
+    let isCancelled = false;
+    let localBlobUrl: string | null = null;
+
+    async function prepareSafeImage() {
+      if (!open || !imageSrc) return;
+
+      setIsLoadingSafeImage(true);
+      setLoadError(null);
+      setImageLoaded(false);
+
+      // Local data URLs or blob URLs are already same-origin and never taint canvas
+      if (imageSrc.startsWith("data:") || imageSrc.startsWith("blob:")) {
+        setSafeImageSrc(imageSrc);
+        setIsLoadingSafeImage(false);
+        return;
+      }
+
+      // Relative path on local site
+      if (imageSrc.startsWith("/") && !imageSrc.startsWith("//")) {
+        setSafeImageSrc(imageSrc);
+        setIsLoadingSafeImage(false);
+        return;
+      }
+
+      // External / remote URL: fetch via server-side image proxy to completely avoid tainted canvas
+      try {
+        const proxyUrl = `/api/admin/proxy-image?url=${encodeURIComponent(imageSrc)}`;
+        const res = await fetch(proxyUrl);
+        if (!res.ok) {
+          throw new Error(`Proxy fetch status: ${res.status}`);
+        }
+        const blob = await res.blob();
+        if (isCancelled) return;
+
+        localBlobUrl = URL.createObjectURL(blob);
+        setSafeImageSrc(localBlobUrl);
+      } catch (err) {
+        console.warn("Proxy load warning, falling back to direct CORS fetch:", err);
+        try {
+          const directRes = await fetch(imageSrc, { mode: "cors" });
+          if (!directRes.ok) throw new Error(`Direct fetch status: ${directRes.status}`);
+          const blob = await directRes.blob();
+          if (isCancelled) return;
+          localBlobUrl = URL.createObjectURL(blob);
+          setSafeImageSrc(localBlobUrl);
+        } catch {
+          // Fallback to proxy URL directly
+          if (!isCancelled) {
+            setSafeImageSrc(`/api/admin/proxy-image?url=${encodeURIComponent(imageSrc)}`);
+          }
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingSafeImage(false);
+        }
+      }
+    }
+
+    prepareSafeImage();
+
+    return () => {
+      isCancelled = true;
+      if (localBlobUrl) {
+        URL.revokeObjectURL(localBlobUrl);
+      }
+    };
+  }, [open, imageSrc]);
 
   // Reset transforms whenever a new image or preset is opened
   useEffect(() => {
@@ -262,7 +337,12 @@ export function ImageCropModal({
             lastModified: Date.now(),
           });
 
-          const dataUrl = canvas.toDataURL(outputMime, quality);
+          let dataUrl = "";
+          try {
+            dataUrl = canvas.toDataURL(outputMime, quality);
+          } catch {
+            dataUrl = URL.createObjectURL(blob);
+          }
 
           try {
             await onCropComplete({ blob, dataUrl, file });
@@ -391,6 +471,22 @@ export function ImageCropModal({
               <div />
             </div>
 
+            {/* Loading state while proxying or converting remote image */}
+            {isLoadingSafeImage && (
+              <div className="absolute inset-0 z-30 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center gap-2 text-white">
+                <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                <span className="text-xs font-mono">Preparing image for clean framing...</span>
+              </div>
+            )}
+
+            {/* Error state if image fails to load */}
+            {loadError && (
+              <div className="absolute inset-0 z-30 bg-black/80 flex flex-col items-center justify-center gap-2 text-white p-4 text-center">
+                <Info className="h-6 w-6 text-destructive" />
+                <span className="text-xs font-mono">{loadError}</span>
+              </div>
+            )}
+
             {/* Draggable & Scalable Image */}
             <div
               className="absolute inset-0 flex items-center justify-center pointer-events-none"
@@ -400,9 +496,16 @@ export function ImageCropModal({
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={imageSrc}
+                ref={imageRef}
+                src={safeImageSrc || imageSrc}
                 alt="Framing preview"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
                 onLoad={handleImageLoad}
+                onError={() => {
+                  setImageLoaded(false);
+                  setLoadError("Failed to load image preview. Please verify URL.");
+                }}
                 style={{
                   transform: `scale(${zoom}) rotate(${rotation}deg) scaleX(${flipH ? -1 : 1})`,
                   transformOrigin: "center center",
@@ -410,7 +513,7 @@ export function ImageCropModal({
                   maxWidth: "none",
                   transition: isDragging ? "none" : "transform 0.1s ease-out",
                 }}
-                className="pointer-events-auto cursor-grab active:cursor-grabbing object-contain"
+                className="pointer-events-auto cursor-grab active:cursor-grabbing object-contain select-none"
                 draggable={false}
               />
             </div>
@@ -525,7 +628,7 @@ export function ImageCropModal({
             <Button
               type="button"
               size="sm"
-              disabled={isProcessing || !imageLoaded}
+              disabled={isProcessing || !imageLoaded || isLoadingSafeImage || Boolean(loadError)}
               onClick={handleApplyCrop}
               className="text-xs font-mono gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium px-4"
             >
