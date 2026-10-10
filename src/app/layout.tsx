@@ -47,6 +47,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
       className={`${inter.variable} ${notoSansBengali.variable} h-full`}
     >
       <body className="min-h-full flex flex-col font-sans">

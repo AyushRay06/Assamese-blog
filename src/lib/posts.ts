@@ -143,8 +143,21 @@ export async function getAllPostsAdmin(options?: {
     orderBy: {
       updatedAt: "desc",
     },
-    include: {
-      tags: true,
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      language: true,
+      status: true,
+      publishedAt: true,
+      updatedAt: true,
+      readingTime: true,
+      tags: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 }
