@@ -105,17 +105,25 @@ export function PostsTable({ posts }: PostsTableProps) {
 
   if (posts.length === 0) {
     return (
-      <div className="rounded-none border border-dashed p-12 text-center">
-        <h3 className="text-base font-semibold text-foreground">No posts created yet</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Get started by crafting your first bilingual essay or thought.
+      <div className="rounded-none border border-dashed border-border/80 bg-card/40 p-12 text-center">
+        <h3 className="text-base font-semibold text-foreground">No articles match your current view</h3>
+        <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
+          Try clearing your search or status filters, or start writing a new bilingual essay.
         </p>
-        <Link
-          href="/admin/posts/new"
-          className={cn(buttonVariants({ size: "sm" }), "mt-4")}
-        >
-          Create New Post
-        </Link>
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <Link
+            href="/admin?tab=posts"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-xs")}
+          >
+            Clear Filters
+          </Link>
+          <Link
+            href="/admin/posts/new"
+            className={cn(buttonVariants({ size: "sm" }), "text-xs")}
+          >
+            Write New Post
+          </Link>
+        </div>
       </div>
     );
   }
