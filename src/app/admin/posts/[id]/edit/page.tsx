@@ -33,11 +33,13 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
               slug: post.slug,
               excerpt: post.excerpt,
               coverImage: post.coverImage,
-              content: post.content as object,
+              content: post.content
+                ? JSON.parse(JSON.stringify(post.content))
+                : { type: "doc", content: [] },
               contentHtml: post.contentHtml,
               language: post.language,
               status: post.status,
-              publishedAt: post.publishedAt,
+              publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
               tags: post.tags,
             }}
           />

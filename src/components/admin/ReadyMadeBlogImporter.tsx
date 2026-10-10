@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { generateSlug } from "@/lib/slug";
 import { compressImageClient } from "@/lib/image-compression";
-import { createPostAction } from "@/actions/posts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -309,11 +308,19 @@ export function ReadyMadeBlogImporter() {
           tags: cleanTags,
         };
 
-        const result = await createPostAction(payload);
-        if (!result.success) {
-          toast.error(result.error);
+        const cleanPayload = JSON.parse(JSON.stringify(payload));
+        const apiRes = await fetch("/api/admin/posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cleanPayload),
+        });
+
+        if (!apiRes.ok) {
+          const errData = await apiRes.json().catch(() => ({}));
+          toast.error(errData.error || "Failed to create blog post.");
           return;
         }
+
         toast.success(
           targetStatus === "PUBLISHED"
             ? "Ready-made blog published successfully!"

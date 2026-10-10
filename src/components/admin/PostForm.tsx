@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { compressImageClient } from "@/lib/image-compression";
 import { generateSlug } from "@/lib/slug";
 import { transliterateTextToAssamese } from "@/lib/assamese-translit";
-import { PostInput } from "@/lib/validations";
+import type { PostInput } from "@/lib/validations";
 import { LanguageCode, SUPPORTED_LANGUAGES } from "@/lib/languages";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
 import { PostContent } from "@/components/blog/PostContent";
@@ -48,7 +48,6 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createPostAction, updatePostAction } from "@/actions/posts";
 import Image from "next/image";
 import Link from "next/link";
 import { EditorStats } from "@/components/editor/TiptapEditor";
@@ -227,7 +226,11 @@ export function PostForm({ initialData }: PostFormProps) {
       status: targetStatus || status,
       publishedAt:
         (targetStatus || status) === "PUBLISHED"
-          ? initialData?.publishedAt || new Date().toISOString()
+          ? typeof initialData?.publishedAt === "string"
+            ? initialData.publishedAt
+            : initialData?.publishedAt instanceof Date
+            ? initialData.publishedAt.toISOString()
+            : new Date().toISOString()
           : null,
       tags: cleanTags,
     };
@@ -248,65 +251,75 @@ export function PostForm({ initialData }: PostFormProps) {
     startTransition(async () => {
       try {
         setSaveStatus("saving");
-        const payload = buildPayload(targetStatus);
+        const rawPayload = buildPayload(targetStatus);
+        const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
+
+        let resSuccess = false;
+        let resId = "";
+        let resError = "";
 
         if (isEditing && initialData?.id) {
-          const result = await updatePostAction(initialData.id, payload);
-          if (!result.success) {
-            setSaveStatus("unsaved");
-            toast.error(result.error);
-            if (
-              result.error.toLowerCase().includes("log in") ||
-              result.error.toLowerCase().includes("session expired") ||
-              result.error.toLowerCase().includes("unauthorized")
-            ) {
-              router.push("/admin/login");
-            }
-            return;
-          }
-          toast.success(
-            targetStatus === "PUBLISHED"
-              ? "Post updated and published!"
-              : "Draft updated successfully!"
-          );
-        } else {
-          const result = await createPostAction(payload);
-          if (!result.success || !result.id) {
-            setSaveStatus("unsaved");
-            const errorMsg =
-              ("error" in result && result.error) ||
-              "Failed to create post. Please check required fields and try again.";
-            toast.error(errorMsg);
-            if (
-              errorMsg.toLowerCase().includes("log in") ||
-              errorMsg.toLowerCase().includes("session expired") ||
-              errorMsg.toLowerCase().includes("unauthorized")
-            ) {
-              router.push("/admin/login");
-            }
-            return;
-          }
-          toast.success(
-            targetStatus === "PUBLISHED"
-              ? "Post published successfully!"
-              : "Draft saved successfully!"
-          );
-          setStatus(targetStatus);
-          setSaveStatus("saved");
-          if (targetStatus === "PUBLISHED") {
-            router.push("/admin");
+          const apiRes = await fetch(`/api/admin/posts/${initialData.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cleanPayload),
+          });
+
+          if (apiRes.ok) {
+            const data = await apiRes.json();
+            resSuccess = true;
+            resId = data.id || initialData.id;
           } else {
-            router.push(`/admin/posts/${result.id}/edit`);
+            const errData = await apiRes.json().catch(() => ({}));
+            resError = errData.error || "Failed to update blog post.";
           }
-          router.refresh();
+        } else {
+          const apiRes = await fetch("/api/admin/posts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cleanPayload),
+          });
+
+          if (apiRes.ok) {
+            const data = await apiRes.json();
+            resSuccess = true;
+            resId = data.id;
+          } else {
+            const errData = await apiRes.json().catch(() => ({}));
+            resError = errData.error || "Failed to create blog post.";
+          }
+        }
+
+        if (!resSuccess) {
+          setSaveStatus("unsaved");
+          toast.error(resError);
+          if (
+            resError.toLowerCase().includes("log in") ||
+            resError.toLowerCase().includes("session expired") ||
+            resError.toLowerCase().includes("unauthorized")
+          ) {
+            router.push("/admin/login");
+          }
           return;
         }
+
+        toast.success(
+          targetStatus === "PUBLISHED"
+            ? (isEditing ? "Blog updated and published!" : "Blog published successfully!")
+            : "Draft saved successfully!"
+        );
         setStatus(targetStatus);
         setSaveStatus("saved");
+
+        if (!isEditing && targetStatus === "PUBLISHED") {
+          router.push("/admin");
+        } else if (!isEditing && resId) {
+          router.push(`/admin/posts/${resId}/edit`);
+        }
         router.refresh();
       } catch (err) {
         setSaveStatus("unsaved");
-        toast.error(err instanceof Error ? err.message : "Failed to save post");
+        toast.error(err instanceof Error ? err.message : "Failed to save blog");
       }
     });
   };
@@ -331,9 +344,14 @@ export function PostForm({ initialData }: PostFormProps) {
 
       try {
         setSaveStatus("saving");
-        const payload = buildPayload("DRAFT");
-        const res = await updatePostAction(initialData.id!, payload);
-        if (res.success) {
+        const rawPayload = buildPayload("DRAFT");
+        const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
+        const apiRes = await fetch(`/api/admin/posts/${initialData.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cleanPayload),
+        });
+        if (apiRes.ok) {
           setSaveStatus("saved");
         } else {
           setSaveStatus("unsaved");
