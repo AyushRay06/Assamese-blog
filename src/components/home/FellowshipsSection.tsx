@@ -133,7 +133,7 @@ export function FellowshipsSection() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
                 <div className="p-3.5 rounded-xl border border-border/70 bg-card/60 space-y-1 shadow-2xs">
                   <span className="text-sm font-medium text-foreground block">
-                    Former Dean of Student Affairs
+                    Dean of Student Affairs
                   </span>
                   <span className="text-xs text-muted-foreground leading-relaxed block">
                     Senior Administrative &amp; Student Affairs Leadership

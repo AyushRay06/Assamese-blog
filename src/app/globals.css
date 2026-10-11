@@ -176,6 +176,20 @@
   animation: marquee-reverse 24s linear infinite;
 }
 
+/* Vertical marquee animation for Hero Blog showcase */
+@keyframes marquee-vertical {
+  0% {
+    transform: translateY(0%);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+.animate-marquee-vertical {
+  animation: marquee-vertical 18s linear infinite;
+}
+
 /* Tiptap / ProseMirror editor images */
 .ProseMirror img {
   display: block;
