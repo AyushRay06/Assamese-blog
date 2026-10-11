@@ -119,6 +119,30 @@ export async function getPublishedPostBySlug(slug: string) {
   }
 }
 
+export async function getRelatedPosts(currentPostId: string, limit: number = 2) {
+  if (!process.env.DATABASE_URL) {
+    return [];
+  }
+  try {
+    return await prisma.post.findMany({
+      where: {
+        id: { not: currentPostId },
+        status: PostStatus.PUBLISHED,
+      },
+      orderBy: {
+        publishedAt: "desc",
+      },
+      take: limit,
+      include: {
+        tags: true,
+      },
+    });
+  } catch (error) {
+    console.warn("getRelatedPosts database error:", error);
+    return [];
+  }
+}
+
 export async function getAllPostsAdmin(options?: {
   search?: string;
   status?: "DRAFT" | "PUBLISHED";
