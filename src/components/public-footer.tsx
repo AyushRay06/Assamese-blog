@@ -21,13 +21,6 @@ export function PublicFooter() {
               Blogs
             </Link>
             <span>&bull;</span>
-            <Link
-              href="/admin"
-              className="transition-colors hover:text-foreground text-muted-foreground/80"
-            >
-              Admin
-            </Link>
-            <span>&bull;</span>
             <span>&copy; {currentYear}</span>
           </div>
         </div>
