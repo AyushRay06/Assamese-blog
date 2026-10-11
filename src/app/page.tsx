@@ -6,17 +6,20 @@ import { FellowshipsSection } from "@/components/home/FellowshipsSection";
 import { BlogsSection } from "@/components/home/BlogsSection";
 import { ContactSection } from "@/components/home/ContactSection";
 import { GridMarqueeDivider } from "@/components/ui/GridMarqueeDivider";
+import { getCachedPublishedPosts } from "@/lib/posts";
 
 export const revalidate = 60; // revalidate every 60s or on demand
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { posts } = await getCachedPublishedPosts(undefined, 1, 8);
+
   return (
     <div className="flex min-h-screen flex-col bg-background selection:bg-foreground selection:text-background">
       <PublicHeader />
 
       <main className="flex-1">
-        {/* 1. Academic Hero with Portrait */}
-        <HeroSection />
+        {/* 1. Academic Hero with Portrait & Blogs Marquee */}
+        <HeroSection posts={posts} />
 
         {/* Section Divider Marquee: Architectural straight-line grid pattern */}
         <GridMarqueeDivider />

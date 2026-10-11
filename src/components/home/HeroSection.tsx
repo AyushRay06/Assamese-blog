@@ -2,8 +2,13 @@
 
 import * as React from "react";
 import Image from "next/image";
+import { HeroBlogMarquee, type MarqueePost } from "./HeroBlogMarquee";
 
-export function HeroSection() {
+interface HeroSectionProps {
+  posts?: MarqueePost[];
+}
+
+export function HeroSection({ posts }: HeroSectionProps) {
   return (
     <section className="relative py-12 sm:py-20 lg:py-24">
       <div className="container mx-auto max-w-5xl px-4 sm:px-6">
@@ -26,6 +31,9 @@ export function HeroSection() {
               <span className="h-1.5 w-1.5 rounded-full bg-primary/70 shrink-0" />
               <span>Dibrugarh University, Assam, India</span>
             </div>
+
+            {/* Blogs Marquee placed directly under the university badge */}
+            <HeroBlogMarquee posts={posts} />
           </div>
 
           {/* Column: Hero Image of Prof. Surajit Borkotokey */}
@@ -50,4 +58,3 @@ export function HeroSection() {
 }
 
 export default HeroSection;
-
