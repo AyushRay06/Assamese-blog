@@ -43,6 +43,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { EditorStats } from "@/components/editor/TiptapEditor";
 import { ImageCropModal, type CropResult, type AspectRatioOption } from "./ImageCropModal";
+import { DeleteBlogConfirmModal } from "./DeleteBlogConfirmModal";
 import {
   saveStudioDraft,
   saveStudioDraftSync,
@@ -130,6 +131,10 @@ export function PostForm({ initialData }: PostFormProps) {
   const [cropImageSrc, setCropImageSrc] = useState<string>("");
   const [cropAspectRatio, setCropAspectRatio] = useState<AspectRatioOption>("16:9");
   const [cropModalTitle, setCropModalTitle] = useState("Crop & Frame Cover Image");
+
+  // Delete & Discard State
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Auto-generate slug when title changes (if not manually overridden)
   const handleTitleChange = (newTitle: string) => {
@@ -525,6 +530,44 @@ export function PostForm({ initialData }: PostFormProps) {
     toast.success("Canvas cleared. Ready for a new post.");
   };
 
+  // Permanently delete post or discard draft and navigate back to admin
+  const handleDeletePost = async () => {
+    setIsDeleting(true);
+    const backupId = initialData?.id || "new";
+
+    try {
+      if (isEditing && initialData?.id) {
+        const res = await fetch(`/api/admin/posts/${initialData.id}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to delete post from database");
+        }
+      }
+
+      // Remove local storage & IndexedDB draft
+      await removeStudioDraft(backupId);
+      activeDraftRef.current = null;
+
+      toast.success(
+        isEditing
+          ? "Blog post deleted successfully."
+          : "Blog draft deleted and discarded."
+      );
+
+      router.push("/admin");
+      router.refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to delete post";
+      toast.error(msg);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
   // Keyboard shortcuts (Escape for full screen, Cmd/Ctrl+S for save)
   const handleSubmitRef = useRef(handleSubmit);
   useEffect(() => {
@@ -839,6 +882,20 @@ export function PostForm({ initialData }: PostFormProps) {
                 {coverImage && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
               </Button>
 
+              {/* Delete / Discard Option */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isPending || isDeleting}
+                onClick={() => setIsDeleteDialogOpen(true)}
+                className="h-8 gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                title={isEditing ? "Permanently delete this blog post" : "Delete and discard this blog draft"}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
+              </Button>
+
               {/* Start Fresh / Clear Canvas */}
               {!isEditing && (title.trim() || contentHtml.trim() || coverImage || excerpt.trim()) && (
                 <Button
@@ -846,7 +903,7 @@ export function PostForm({ initialData }: PostFormProps) {
                   variant="ghost"
                   size="sm"
                   onClick={handleStartFresh}
-                  className="h-8 gap-1 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 hidden sm:inline-flex cursor-pointer"
+                  className="h-8 gap-1 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 hidden md:inline-flex cursor-pointer"
                   title="Clear current canvas and draft to start fresh"
                 >
                   <RotateCcw className="h-3 w-3" />
@@ -1484,20 +1541,19 @@ export function PostForm({ initialData }: PostFormProps) {
               </div>
 
               <div className="pt-6 border-t border-border mt-6 space-y-2">
-                {!isEditing && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full text-xs text-destructive hover:bg-destructive/10 border-destructive/30 cursor-pointer"
-                    onClick={() => {
-                      setIsSettingsOpen(false);
-                      handleStartFresh();
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    Clear Canvas & Start Fresh
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full text-xs text-destructive hover:bg-destructive/10 border-destructive/30 cursor-pointer"
+                  onClick={() => {
+                    setIsSettingsOpen(false);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  {isEditing ? "Delete Blog Post" : "Delete & Discard Blog"}
+                </Button>
+
                 <Button
                   type="button"
                   className="w-full text-xs cursor-pointer"
@@ -1517,6 +1573,16 @@ export function PostForm({ initialData }: PostFormProps) {
         title={cropModalTitle}
         initialAspectRatio={cropAspectRatio}
         onCropComplete={handleCoverCropComplete}
+      />
+
+      {/* Delete / Discard Confirmation Modal */}
+      <DeleteBlogConfirmModal
+        open={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeletePost}
+        isDeleting={isDeleting}
+        isEditingExisting={isEditing}
+        blogTitle={title}
       />
     </div>
   );

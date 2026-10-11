@@ -20,9 +20,12 @@ import {
   ArrowRight,
   RotateCcw,
   Crop,
+  Loader2,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImageCropModal, type CropResult, type AspectRatioOption } from "./ImageCropModal";
+import { DeleteBlogConfirmModal } from "./DeleteBlogConfirmModal";
 
 interface UploadedImageItem {
   id: string;
@@ -40,6 +43,10 @@ export function ReadyMadeBlogImporter() {
   const [excerpt, setExcerpt] = useState("");
   const [language, setLanguage] = useState<"EN" | "AS">("EN");
   const [tags, setTags] = useState("");
+
+  // Delete / Discard state
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Crash Protection / Recovery State
   const [hasLocalDraft, setHasLocalDraft] = useState(false);
@@ -71,6 +78,7 @@ export function ReadyMadeBlogImporter() {
 
   // Drag and drop file import
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [isParsingPdf, setIsParsingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle Cover Image Selection -> opens interactive cropper
@@ -267,8 +275,53 @@ export function ReadyMadeBlogImporter() {
     toast.info("Image removed from in-body gallery");
   };
 
-  // Handle Drop of Ready-Made Document (.md, .txt, .html)
+  // Handle Drop of Ready-Made Document (.md, .txt, .html, .pdf)
   const handleFileProcess = async (file: File) => {
+    const isPdf =
+      file.type === "application/pdf" ||
+      file.name.toLowerCase().endsWith(".pdf");
+
+    if (isPdf) {
+      setIsParsingPdf(true);
+      const toastId = toast.loading(`Converting "${file.name}" into blog...`);
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/api/admin/parse-pdf", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Failed to convert PDF");
+        }
+
+        setTitle(data.title || "");
+        setSlug(data.slug || generateSlug(data.title || file.name));
+        setExcerpt(data.excerpt || "");
+        setContent(data.content || "");
+        if (data.language) {
+          setLanguage(data.language);
+        }
+
+        toast.success(
+          `Converted "${file.name}" (${data.totalPages} page${data.totalPages > 1 ? "s" : ""}, ~${data.wordCount} words)!`,
+          { id: toastId }
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast.error("Failed to convert PDF: " + msg, { id: toastId });
+      } finally {
+        setIsParsingPdf(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     try {
       const text = await file.text();
 
@@ -304,6 +357,8 @@ export function ReadyMadeBlogImporter() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error("Failed to read file: " + msg);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -312,6 +367,34 @@ export function ReadyMadeBlogImporter() {
     setIsDraggingFile(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileProcess(e.dataTransfer.files[0]);
+    }
+  };
+
+  // Permanently discard and delete ready-made blog draft
+  const handleDeleteBlog = async () => {
+    try {
+      setIsDeleting(true);
+      localStorage.removeItem("borkoto_blog_import_backup");
+
+      setTitle("");
+      setSlug("");
+      setExcerpt("");
+      setContent("");
+      setCoverImage("");
+      setInBodyImages([]);
+      setTags("");
+      setHasLocalDraft(false);
+      setLocalDraftInfo(null);
+
+      toast.success("Ready-made blog draft deleted and discarded.");
+      router.push("/admin");
+      router.refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to discard";
+      toast.error(msg);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -578,44 +661,109 @@ export function ReadyMadeBlogImporter() {
         </div>
       )}
 
+      {/* Importer Top Header & Quick Actions */}
+      <div className="flex items-center justify-between gap-4 pb-1">
+        <div className="space-y-0.5">
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">
+            Ready-Made Blog Importer
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Drop or pick any PDF, Markdown, or HTML file to automatically generate your blog.
+          </p>
+        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={isPending || isDeleting}
+          onClick={() => setIsDeleteDialogOpen(true)}
+          className="text-xs font-mono gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer h-8 px-3 rounded-lg"
+          title="Delete and discard this ready-made blog"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span>Delete Blog</span>
+        </Button>
+      </div>
+
       {/* 1. File Dropzone & Import Assistant */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
-          setIsDraggingFile(true);
+          if (!isParsingPdf) setIsDraggingFile(true);
         }}
         onDragLeave={() => setIsDraggingFile(false)}
-        onDrop={handleDrop}
-        className={`border-2 border-dashed p-8 sm:p-10 text-center transition-all cursor-pointer rounded-2xl ${
-          isDraggingFile
-            ? "border-primary bg-primary/5"
+        onDrop={(e) => {
+          if (!isParsingPdf) handleDrop(e);
+        }}
+        className={`border-2 border-dashed p-8 sm:p-10 text-center transition-all cursor-pointer rounded-2xl relative overflow-hidden ${
+          isParsingPdf
+            ? "border-primary/40 bg-primary/5 pointer-events-none"
+            : isDraggingFile
+            ? "border-primary bg-primary/5 shadow-inner"
             : "border-border/70 bg-muted/20 hover:border-foreground/40 hover:bg-muted/30"
         }`}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => {
+          if (!isParsingPdf) fileInputRef.current?.click();
+        }}
       >
         <input
           ref={fileInputRef}
           type="file"
-          accept=".md,.markdown,.txt,.html"
+          accept=".md,.markdown,.txt,.html,.pdf,application/pdf"
           className="hidden"
           onChange={(e) => {
             if (e.target.files?.[0]) handleFileProcess(e.target.files[0]);
           }}
         />
 
-        <div className="flex flex-col items-center justify-center space-y-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-background border border-border shadow-xs">
-            <UploadCloud className="h-6 w-6 text-foreground/80" />
+        {isParsingPdf ? (
+          <div className="flex flex-col items-center justify-center space-y-3 py-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-primary">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+            <div>
+              <h3 className="font-heading text-lg font-semibold text-foreground">
+                Converting PDF into blog post...
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                Reading pages, extracting headings, paragraphs, and detecting language.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-heading text-lg font-semibold text-foreground">
-              Drop your ready-made blog file here (.md, .txt, .html)
-            </h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              or click to browse from your computer. Title, excerpt, and text will be extracted automatically.
-            </p>
+        ) : (
+          <div className="flex flex-col items-center justify-center space-y-3.5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-background border border-border shadow-xs">
+              <UploadCloud className="h-6 w-6 text-foreground/80" />
+            </div>
+            <div>
+              <h3 className="font-heading text-lg font-semibold text-foreground">
+                Drop your ready-made blog file here (.pdf, .md, .txt, .html)
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-lg mx-auto">
+                or click to browse from your device. PDF documents, Markdown files, and text will be converted into a structured blog instantly.
+              </p>
+            </div>
+
+            {/* Supported Format Badges */}
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-medium bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                <FileText className="h-3 w-3" />
+                PDF (.pdf)
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                <FileCode className="h-3 w-3" />
+                Markdown (.md)
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                HTML (.html)
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-medium bg-muted text-muted-foreground border border-border/60">
+                Plain Text (.txt)
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* 2. Metadata: Title, Language, Slug, Status */}
@@ -943,16 +1091,31 @@ To insert images in different sections, set your cursor there and click "+ Inser
       </div>
 
       {/* 5. Sticky Publish & Save Action Bar */}
-      <div className="sticky bottom-6 z-30 flex items-center justify-between p-4 bg-background/95 backdrop-blur-md border border-border/80 rounded-2xl shadow-lg">
-        <div className="text-xs font-mono text-muted-foreground">
-          {content.trim() ? `${content.trim().split(/\s+/).length} words` : "0 words"}
+      <div className="sticky bottom-6 z-30 flex flex-wrap items-center justify-between gap-3 p-4 bg-background/95 backdrop-blur-md border border-border/80 rounded-2xl shadow-lg">
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isPending || isDeleting}
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="text-xs font-mono gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer h-9 px-3 rounded-xl"
+            title="Delete and discard this ready-made blog"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Delete Blog</span>
+          </Button>
+
+          <span className="text-xs font-mono text-muted-foreground hidden sm:inline">
+            {content.trim() ? `${content.trim().split(/\s+/).length} words` : "0 words"}
+          </span>
         </div>
 
         <div className="flex items-center gap-3">
           <Button
             type="button"
             variant="outline"
-            disabled={isPending || isUploadingCover}
+            disabled={isPending || isUploadingCover || isDeleting}
             onClick={() => handleSubmit("DRAFT")}
             className="text-xs font-mono"
           >
@@ -961,7 +1124,7 @@ To insert images in different sections, set your cursor there and click "+ Inser
 
           <Button
             type="button"
-            disabled={isPending || isUploadingCover}
+            disabled={isPending || isUploadingCover || isDeleting}
             onClick={() => handleSubmit("PUBLISHED")}
             className="text-xs font-mono gap-1.5 bg-foreground text-background hover:bg-foreground/90 font-medium px-5"
           >
@@ -988,6 +1151,16 @@ To insert images in different sections, set your cursor there and click "+ Inser
           onCropComplete={handleCropComplete}
         />
       )}
+
+      {/* Delete / Discard Confirmation Modal */}
+      <DeleteBlogConfirmModal
+        open={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteBlog}
+        isDeleting={isDeleting}
+        isEditingExisting={false}
+        blogTitle={title}
+      />
     </div>
   );
 }

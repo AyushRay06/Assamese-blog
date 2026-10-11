@@ -58,7 +58,7 @@ export default async function BlogArchivePage({ searchParams }: BlogArchivePageP
                     Blogs &amp; Writings
                   </h1>
                   <p className="text-sm sm:text-base text-muted-foreground leading-relaxed pt-1">
-                    Essays and critical reflections on cooperative game theory, applied mathematical foundations, higher education dynamics, and Assamese cultural narratives.
+                    Essays and critical reflections on the Academic, Societal and Scientific Paradigms.
                   </p>
                 </div>
 

@@ -80,7 +80,7 @@ export function NewPostDropdown({ className }: NewPostDropdownProps) {
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                Upload Markdown/Word file with instant cover photo.
+                Upload PDF, Markdown, or text file with instant cover photo.
               </p>
             </div>
           </DropdownMenuItem>

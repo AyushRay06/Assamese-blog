@@ -20,10 +20,23 @@ export function HeroSection({ posts }: HeroSectionProps) {
                 Prof. Surajit Borkotokey
               </h1>
 
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3 text-base sm:text-lg lg:text-xl font-medium text-foreground/85 font-heading">
-                <span className="text-foreground">Professor of Mathematics</span>
-                <span className="text-muted-foreground/40">&bull;</span>
-                <span className="text-foreground/80">Cooperative Game Theory</span>
+              {/* Academic Credentials & Leadership Stack */}
+              <div className="space-y-1 text-center lg:text-left max-w-xl text-xs sm:text-[13px] lg:text-sm">
+                <p className="font-semibold text-foreground text-sm sm:text-base">
+                  Professor of Mathematics
+                </p>
+                <p className="font-medium text-foreground/85">
+                  Dean Student Affairs
+                </p>
+                <p className="font-medium text-foreground/85">
+                  Director, Office of the International Affairs
+                </p>
+                <p className="text-muted-foreground leading-snug">
+                  Former Senior Visiting Research Fellow at Corvinus Institute for Advanced Studies, Corvinus University, Budapest, Hungary
+                </p>
+                <p className="text-muted-foreground leading-snug">
+                  Former Indo-US Fellow at Louisiana State University, USA
+                </p>
               </div>
             </div>
 
