@@ -192,3 +192,28 @@
   outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
+
+/* Image alignment rules for Editor and Published Blogs */
+.ProseMirror img[data-align="left"],
+.prose img[data-align="left"],
+img.align-left {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  display: block !important;
+}
+
+.ProseMirror img[data-align="center"],
+.prose img[data-align="center"],
+img.align-center {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: block !important;
+}
+
+.ProseMirror img[data-align="right"],
+.prose img[data-align="right"],
+img.align-right {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  display: block !important;
+}

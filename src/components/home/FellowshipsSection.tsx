@@ -56,7 +56,7 @@ export function FellowshipsSection() {
             Fellowships &amp; Institutional Leadership
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            International visiting research fellowships alongside senior teaching, administrative, and international-engagement responsibilities.
+            Senior Visiting Research Fellow at CIAS Budapest (2025–Present) alongside international visiting research appointments, university governance, and institutional leadership.
           </p>
         </div>
 
@@ -133,7 +133,7 @@ export function FellowshipsSection() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
                 <div className="p-3.5 rounded-xl border border-border/70 bg-card/60 space-y-1 shadow-2xs">
                   <span className="text-sm font-medium text-foreground block">
-                    Dean of Student Affairs
+                    Former Dean of Student Affairs
                   </span>
                   <span className="text-xs text-muted-foreground leading-relaxed block">
                     Senior Administrative &amp; Student Affairs Leadership

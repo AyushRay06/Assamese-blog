@@ -10,7 +10,36 @@ const {
   proj, register, seg, tdone, tset, tval, tween,
 } = HL;
 
-const SLIDE = 24, SHELF_Z = [2, 34, 66], BOOKS: any[] = [];
+interface BookItem {
+  id: number;
+  s: number;
+  x0: number;
+  x1: number;
+  h: number;
+  y0: number;
+  y1: number;
+  label: string;
+}
+
+type Projector = (x: number, y: number, z: number) => [number, number];
+
+interface MountOptions {
+  stage: HTMLElement;
+  svg: SVGSVGElement;
+  read: { textContent: string | null };
+}
+
+interface BookElement {
+  b: BookItem;
+  spine: SVGElement;
+  top: SVGElement;
+  leftCover: SVGElement;
+  rightCover: SVGElement;
+  ribs: SVGElement;
+  dy: ReturnType<typeof tween>;
+}
+
+const SLIDE = 24, SHELF_Z = [2, 34, 66], BOOKS: BookItem[] = [];
 const ROW_W = [
   [4.8, 3.6, 5.6, 4.2, 5.0, 6.0, 4.0, 5.4, 3.8, 5.2, 5.8],
   [5.4, 3.8, 5.0, 5.8, 4.2, 5.2, 3.8, 5.4, 4.6, 5.0],
@@ -41,7 +70,7 @@ if (BOOKS.length === 0) {
   });
 }
 
-function frame(P: any) {
+function frame(P: Projector) {
   const X0 = -46, X1 = 46, Y0 = -10, Y1 = 11;
   const lWall = poly([P(X0 - 4, Y0, 0), P(X0 - 4, Y1, 0), P(X0 - 4, Y1, 98), P(X0 - 4, Y0, 98)]);
   const lFace = poly([P(X0 - 4, Y1, 0), P(X0, Y1, 0), P(X0, Y1, 98), P(X0 - 4, Y1, 98)]);
@@ -76,7 +105,7 @@ function frame(P: any) {
   return { lWall, lFace, rWall, rFace, backWall, shelves, hourglass: { hBase, hBaseT, hBaseL, hTop, hGlass }, bust: { bPed, bPedT, bPedLip, bBust }, obelisk: { oPed, oPedT, oPedLip, obelisk } };
 }
 
-function book3D(P: any, b: any, dy: number) {
+function book3D(P: Projector, b: BookItem, dy: number) {
   const z0 = SHELF_Z[b.s], z1 = z0 + b.h, y0 = b.y0 + dy, y1 = b.y1 + dy;
   const spine = poly([P(b.x0, y1, z0), P(b.x1, y1, z0), P(b.x1, y1, z1), P(b.x0, y1, z1)]);
   const top = poly([P(b.x0, y1, z1), P(b.x1, y1, z1), P(b.x1, y0, z1), P(b.x0, y0, z1)]);
@@ -86,7 +115,7 @@ function book3D(P: any, b: any, dy: number) {
   return { spine, top, leftCover, rightCover, ribs };
 }
 
-function mountBookshelf({ stage, svg, read }: any, value: number, play: boolean = false) {
+function mountBookshelf({ stage, svg, read }: MountOptions, value: number, play: boolean = false) {
   const bag = disposer();
   let stag = value;
   let autoPlay = play;
@@ -105,7 +134,7 @@ function mountBookshelf({ stage, svg, read }: any, value: number, play: boolean 
   mk("path", { d: bk.lFace, class: "sil" }, g);
   mk("path", { d: bk.rFace, class: "sil" }, g);
 
-  const bookElements: any[] = [];
+  const bookElements: BookElement[] = [];
   [0, 1, 2].forEach((s) => {
     const sh = bk.shelves[s];
     mk("path", { d: sh.top, class: "sil" }, g);
@@ -162,7 +191,7 @@ function mountBookshelf({ stage, svg, read }: any, value: number, play: boolean 
     el.ribs.setAttribute("d", q.ribs);
   }
 
-  let B: any = null;
+  let B: ReturnType<typeof register> | null = null;
   let act = -1;
   function setActive(a: number) {
     if (a === act) return;
@@ -242,8 +271,11 @@ export const BookshelfFigure = forwardRef<HTMLDivElement, BookshelfProps>(functi
 
   const setRef = useCallback((node: HTMLDivElement | null) => {
     elRef.current = node;
-    if (typeof ref === "function") ref(node);
-    else if (ref) (ref as any).current = node;
+    if (typeof ref === "function") {
+      ref(node);
+    } else if (ref && "current" in ref) {
+      (ref as React.RefObject<HTMLDivElement | null>).current = node;
+    }
   }, [ref]);
 
   useIsoLayoutEffect(() => {

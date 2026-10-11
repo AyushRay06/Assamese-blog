@@ -2,6 +2,7 @@ import { getAllPostsAdmin } from "@/lib/posts";
 import prisma from "@/lib/prisma";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminDashboardView } from "@/components/admin/AdminDashboardView";
+import { getLiveVisitorCount } from "@/lib/visitor-count";
 
 interface AdminDashboardProps {
   searchParams: Promise<{
@@ -15,8 +16,8 @@ interface AdminDashboardProps {
 export default async function AdminDashboard({ searchParams }: AdminDashboardProps) {
   const params = await searchParams;
 
-  let posts: any[] = [];
-  let contactMessages: any[] = [];
+  let posts: Awaited<ReturnType<typeof getAllPostsAdmin>> = [];
+  let contactMessages: Awaited<ReturnType<typeof prisma.contactMessage.findMany>> = [];
   let stats = {
     totalPostsCount: 0,
     publishedCount: 0,
@@ -25,12 +26,14 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
     englishCount: 0,
     unreadMessagesCount: 0,
     totalMessagesCount: 0,
+    totalVisitors: 0,
+    todayVisitorGrowth: 0,
   };
 
   if (process.env.DATABASE_URL) {
     try {
-      // Execute 4 fast concurrent queries instead of 10 round trips
-      const [postStats, messageStats, fetchedPosts, fetchedMessages] = await Promise.all([
+      // Execute 5 fast concurrent queries instead of multiple round trips
+      const [postStats, messageStats, fetchedPosts, fetchedMessages, visitorStats] = await Promise.all([
         prisma.post.groupBy({
           by: ["status", "language"],
           _count: { id: true },
@@ -44,6 +47,7 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
           orderBy: { createdAt: "desc" },
           take: 50,
         }),
+        getLiveVisitorCount(),
       ]);
 
       posts = fetchedPosts;
@@ -80,18 +84,24 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
         englishCount: english,
         unreadMessagesCount: unreadMsgs,
         totalMessagesCount: totalMsgs,
+        totalVisitors: visitorStats.totalCount,
+        todayVisitorGrowth: visitorStats.todayIncrement,
       };
     } catch (err) {
       console.warn("Admin dashboard database error:", err);
+      const fallbackVisitors = await getLiveVisitorCount();
+      stats.totalVisitors = fallbackVisitors.totalCount;
+      stats.todayVisitorGrowth = fallbackVisitors.todayIncrement;
     }
+  } else {
+    const fallbackVisitors = await getLiveVisitorCount();
+    stats.totalVisitors = fallbackVisitors.totalCount;
+    stats.todayVisitorGrowth = fallbackVisitors.todayIncrement;
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-background selection:bg-primary/20">
-      <AdminHeader
-        unreadMessagesCount={stats.unreadMessagesCount}
-        activeTab={params.tab === "messages" ? "messages" : "posts"}
-      />
+      <AdminHeader />
 
       <main className="flex-1 py-8 sm:py-12">
         <AdminDashboardView

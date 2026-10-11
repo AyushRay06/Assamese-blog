@@ -1,11 +1,11 @@
 import prisma from "@/lib/prisma";
-import { PostStatus } from "@prisma/client";
+import { PostStatus, type Post } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-  let posts: any[] = [];
+  let posts: Post[] = [];
   if (process.env.DATABASE_URL) {
     try {
       posts = await prisma.post.findMany({

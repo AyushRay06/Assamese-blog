@@ -4,13 +4,14 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ArrowUpRight } from "lucide-react";
 import { cn } from "cn";
 
 export function PublicHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const pathname = usePathname();
 
+  const isHome = pathname === "/" || pathname === "";
   const isBlog = pathname?.startsWith("/blog");
 
   return (
@@ -32,13 +33,13 @@ export function PublicHeader() {
             />
           </div>
           <span className="font-heading text-sm sm:text-base font-semibold tracking-tight text-foreground">
-            Prof. Surajit Borkotokey
+            Home
           </span>
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="flex items-center gap-6">
-          <nav className="hidden md:flex items-center gap-7 text-xs font-mono">
+        {/* Right side navigation & 1-click Blogs access */}
+        <div className="flex items-center gap-3 sm:gap-6">
+          <nav className="hidden md:flex items-center gap-6 text-xs font-mono">
             <Link
               href="/#research"
               className="text-muted-foreground transition-colors hover:text-foreground"
@@ -52,24 +53,28 @@ export function PublicHeader() {
               Fellowships
             </Link>
             <Link
-              href="/blog"
-              prefetch={true}
-              className={cn(
-                "transition-colors hover:text-foreground",
-                isBlog
-                  ? "text-foreground font-semibold border-b border-foreground pb-0.5"
-                  : "text-muted-foreground"
-              )}
-            >
-              Blogs
-            </Link>
-            <Link
               href="/#contact"
               className="text-muted-foreground transition-colors hover:text-foreground"
             >
               Contact
             </Link>
           </nav>
+
+          {/* 1-Click Blogs Menu Button: Instant access on both Mobile and Desktop */}
+          <Link
+            href="/blog"
+            prefetch={true}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-mono font-medium transition-all active:scale-95 shadow-2xs",
+              isBlog
+                ? "bg-foreground text-background font-semibold"
+                : "border border-border/80 bg-foreground text-background hover:bg-foreground/90"
+            )}
+            aria-label="Navigate to Blogs page"
+          >
+            <span>Blogs</span>
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
 
           {/* Mobile Menu Toggle */}
           <button
@@ -88,12 +93,25 @@ export function PublicHeader() {
         <div className="border-b border-border/60 bg-background/98 backdrop-blur-xl px-4 py-4 md:hidden shadow-lg animate-in fade-in-50 slide-in-from-top-1 duration-150">
           <nav className="flex flex-col space-y-1 text-sm font-mono">
             <Link
+              href="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className={cn(
+                "flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors",
+                isHome
+                  ? "bg-foreground text-background font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              )}
+            >
+              <span>Home</span>
+              <span className="text-xs text-muted-foreground/60">01</span>
+            </Link>
+            <Link
               href="/#research"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
               <span>Research</span>
-              <span className="text-xs text-muted-foreground/60">01</span>
+              <span className="text-xs text-muted-foreground/60">02</span>
             </Link>
             <Link
               href="/#fellowships"
@@ -101,7 +119,7 @@ export function PublicHeader() {
               className="flex items-center justify-between px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
               <span>Fellowships</span>
-              <span className="text-xs text-muted-foreground/60">02</span>
+              <span className="text-xs text-muted-foreground/60">03</span>
             </Link>
             <Link
               href="/blog"
@@ -128,7 +146,7 @@ export function PublicHeader() {
               className="flex items-center justify-between px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
               <span>Contact</span>
-              <span className="text-xs text-muted-foreground/60">03</span>
+              <span className="text-xs text-muted-foreground/60">04</span>
             </Link>
           </nav>
 

@@ -2,20 +2,17 @@
 
 import React, { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { compressImageClient } from "@/lib/image-compression";
 import { generateSlug } from "@/lib/slug";
 import { transliterateTextToAssamese } from "@/lib/assamese-translit";
 import type { PostInput } from "@/lib/validations";
-import { LanguageCode, SUPPORTED_LANGUAGES } from "@/lib/languages";
+import { type LanguageCode } from "@/lib/languages";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
 import { PostContent } from "@/components/blog/PostContent";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -23,13 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   RefreshCw,
   Upload,
@@ -39,16 +29,12 @@ import {
   Clock,
   Sparkles,
   ArrowLeft,
-  Maximize2,
-  Minimize2,
   Columns2,
   SlidersHorizontal,
   X,
-  Languages,
   ImageIcon,
   Crop,
   ShieldCheck,
-  AlertCircle,
   Trash2,
   RotateCcw,
 } from "lucide-react";
@@ -100,7 +86,6 @@ export function PostForm({ initialData }: PostFormProps) {
     wordCount: number;
     title: string;
   } | null>(null);
-  const [lastBackedUpAt, setLastBackedUpAt] = useState<number | null>(null);
 
   // Form States
   const [title, setTitle] = useState(initialData?.title || "");
@@ -171,7 +156,7 @@ export function PostForm({ initialData }: PostFormProps) {
     const objectUrl = URL.createObjectURL(rawFile);
     setCropImageSrc(objectUrl);
     setCropAspectRatio("16:9");
-    setCropModalTitle("Crop & Frame Cover Image");
+    setCropModalTitle("Crop Cover Image (16:9)");
     setIsCropModalOpen(true);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -185,7 +170,7 @@ export function PostForm({ initialData }: PostFormProps) {
     }
     setCropImageSrc(activeCover);
     setCropAspectRatio("16:9");
-    setCropModalTitle("Re-frame & Adjust Cover Image");
+    setCropModalTitle("Crop Cover Image (16:9)");
     setIsCropModalOpen(true);
   };
 
@@ -429,12 +414,14 @@ export function PostForm({ initialData }: PostFormProps) {
             : "";
           const words = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
 
-          setLocalDraftInfo({
-            timestamp: parsed.timestamp,
-            wordCount: words,
-            title: parsed.title || "Untitled Draft",
-          });
-          setHasLocalDraft(true);
+          setTimeout(() => {
+            setLocalDraftInfo({
+              timestamp: parsed.timestamp,
+              wordCount: words,
+              title: parsed.title || "Untitled Draft",
+            });
+            setHasLocalDraft(true);
+          }, 0);
         }
       }
     } catch (err) {
@@ -464,7 +451,6 @@ export function PostForm({ initialData }: PostFormProps) {
             timestamp: Date.now(),
           })
         );
-        setLastBackedUpAt(Date.now());
       } catch (err) {
         console.warn("Local storage backup quota exceeded or unavailable:", err);
       }
@@ -535,6 +521,11 @@ export function PostForm({ initialData }: PostFormProps) {
   }, [saveStatus, title, contentHtml]);
 
   // Keyboard shortcuts (Escape for full screen, Cmd/Ctrl+S for save)
+  const handleSubmitRef = useRef(handleSubmit);
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+  });
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isFullScreen) {
@@ -546,12 +537,12 @@ export function PostForm({ initialData }: PostFormProps) {
       }
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        handleSubmit("DRAFT");
+        handleSubmitRef.current("DRAFT");
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFullScreen, isSettingsOpen, title, slug, excerpt, coverImage, language, contentHtml, contentJson, tagInput]);
+  }, [isFullScreen, isSettingsOpen]);
 
   const getCanvasWidthClass = () => {
     switch (canvasWidth) {
@@ -568,6 +559,13 @@ export function PostForm({ initialData }: PostFormProps) {
 
   return (
     <div className="w-full flex flex-col font-sans selection:bg-primary/20 rounded-2xl border border-border/50 bg-card/25 shadow-xs overflow-hidden">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+        onChange={handleCoverUpload}
+        className="hidden"
+      />
       {/* Studio Top Navigation Bar */}
       <header
         className={cn(
@@ -1412,10 +1410,10 @@ export function PostForm({ initialData }: PostFormProps) {
                 <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                     <ImageIcon className="h-3.5 w-3.5 text-primary" />
-                    <span>In-Body Images Placement</span>
+                    <span>In-Body Images & Alignment</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    To place images in different sections of your blog, set your cursor at the desired section in the editor and click the Image tool on the toolbar, or drag and drop photos directly.
+                    Images inside the blog body can be of any size or aspect ratio without cropping. Use the toolbar or image dialog to align them Left, Center, or Right.
                   </p>
                 </div>
 

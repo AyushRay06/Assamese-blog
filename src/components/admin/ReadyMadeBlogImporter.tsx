@@ -9,21 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   UploadCloud,
-  FileText,
   Image as ImageIcon,
-  CheckCircle2,
   Trash2,
   Copy,
   Plus,
   Eye,
   FileCode,
   ArrowRight,
-  ExternalLink,
   RotateCcw,
-  ShieldCheck,
   Crop,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -45,7 +40,6 @@ export function ReadyMadeBlogImporter() {
   const [excerpt, setExcerpt] = useState("");
   const [language, setLanguage] = useState<"EN" | "AS">("EN");
   const [tags, setTags] = useState("");
-  const [status, setStatus] = useState<"DRAFT" | "PUBLISHED">("PUBLISHED");
 
   // Crash Protection / Recovery State
   const [hasLocalDraft, setHasLocalDraft] = useState(false);
@@ -307,8 +301,9 @@ export function ReadyMadeBlogImporter() {
       }
 
       toast.success(`Successfully imported "${file.name}"!`);
-    } catch (err: any) {
-      toast.error("Failed to read file: " + err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error("Failed to read file: " + msg);
     }
   };
 
@@ -334,12 +329,14 @@ export function ReadyMadeBlogImporter() {
         if (hasContent && parsed.timestamp) {
           const plainText = (parsed.content || "").replace(/<[^>]+>/g, " ").trim();
           const words = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
-          setLocalDraftInfo({
-            timestamp: parsed.timestamp,
-            wordCount: words,
-            title: parsed.title || "Untitled Import Draft",
-          });
-          setHasLocalDraft(true);
+          setTimeout(() => {
+            setLocalDraftInfo({
+              timestamp: parsed.timestamp,
+              wordCount: words,
+              title: parsed.title || "Untitled Import Draft",
+            });
+            setHasLocalDraft(true);
+          }, 0);
         }
       }
     } catch (err) {

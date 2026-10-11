@@ -23,6 +23,25 @@ export interface EditorStats {
   paragraphs: number;
 }
 
+export const AlignableImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      alignment: {
+        default: "center",
+        parseHTML: (element) => element.getAttribute("data-align") || "center",
+        renderHTML: (attributes) => {
+          const align = attributes.alignment || "center";
+          return {
+            "data-align": align,
+            class: `rounded-xl border border-border/40 max-w-full h-auto my-6 shadow-xs align-${align}`,
+          };
+        },
+      },
+    };
+  },
+});
+
 interface TiptapEditorProps {
   initialContent?: object | string;
   language: LanguageCode;
@@ -136,11 +155,8 @@ export function TiptapEditor({
       TextAlign.configure({
         types: ["heading", "paragraph"],
       }),
-      Image.configure({
+      AlignableImage.configure({
         inline: false,
-        HTMLAttributes: {
-          class: "rounded-xl border border-border/40 max-w-full h-auto my-6 shadow-xs mx-auto",
-        },
       }),
       Placeholder.configure({
         placeholder: dynamicPlaceholder,

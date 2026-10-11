@@ -20,7 +20,7 @@ export function BlogCoverImage({
   priority = false,
   sizes = "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
   className = "object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]",
-  aspectClass = "aspect-[16/10]",
+  aspectClass = "aspect-[16/9]",
 }: BlogCoverImageProps) {
   const [hasError, setHasError] = useState(false);
 

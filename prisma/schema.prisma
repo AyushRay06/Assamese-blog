@@ -56,3 +56,11 @@ model ContactMessage {
   @@index([createdAt])
   @@index([status])
 }
+
+model SiteVisitor {
+  id              String   @id @default("singleton")
+  baseCount       Int      @default(18450)
+  extraVisits     Int      @default(0)
+  lastUpdatedDate String   @default("")
+  updatedAt       DateTime @updatedAt
+}

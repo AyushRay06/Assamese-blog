@@ -16,7 +16,7 @@ interface NewPostDropdownProps {
   className?: string;
 }
 
-export function NewPostDropdown({ className }: { className?: string }) {
+export function NewPostDropdown({ className }: NewPostDropdownProps) {
   const router = useRouter();
 
   return (

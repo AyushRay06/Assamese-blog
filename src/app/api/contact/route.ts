@@ -12,7 +12,7 @@ const ContactSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    let body: any;
+    let body: unknown;
     try {
       body = await request.json();
     } catch {
@@ -38,8 +38,8 @@ export async function POST(request: Request) {
     const { name, email, subject, message } = validationResult.data;
 
     // 1. Record inquiry in PostgreSQL database with retry for serverless resilience
-    let savedRecord: any = null;
-    let dbError: any = null;
+    let savedRecord: { id: string } | null = null;
+    let dbError: unknown = null;
 
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
@@ -53,9 +53,10 @@ export async function POST(request: Request) {
           },
         });
         break; // Successfully saved
-      } catch (err: any) {
+      } catch (err: unknown) {
         dbError = err;
-        console.warn(`[Contact DB attempt ${attempt} failed]:`, err?.message || err);
+        const errMessage = err instanceof Error ? err.message : String(err);
+        console.warn(`[Contact DB attempt ${attempt} failed]:`, errMessage);
         if (attempt === 1) {
           // brief pause before retry to allow neon endpoint wake-up
           await new Promise((resolve) => setTimeout(resolve, 300));
@@ -64,7 +65,8 @@ export async function POST(request: Request) {
     }
 
     if (!savedRecord) {
-      console.warn("[Contact API DB Warning]: Unable to save to DB, proceeding to email dispatch:", dbError?.message || dbError);
+      const dbErrMsg = dbError instanceof Error ? dbError.message : String(dbError);
+      console.warn("[Contact API DB Warning]: Unable to save to DB, proceeding to email dispatch:", dbErrMsg);
     }
 
     // 2. Dispatch email notification (non-blocking failure safe)
@@ -95,7 +97,7 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[Contact API Unexpected Error]:", err);
     return NextResponse.json(
       {

@@ -41,11 +41,12 @@ export function ContactSection() {
       setSuccessNotice(data.message || "Message delivered successfully.");
       setFormData({ name: "", email: "", subject: "", message: "" });
       toast.success(data.message || "Message delivered successfully.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred. Please try again.";
       setStatus("error");
-      setErrorMessage(err.message || "An unexpected error occurred. Please try again.");
-      toast.error(err.message || "Failed to send message");
+      setErrorMessage(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

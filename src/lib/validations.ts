@@ -37,7 +37,7 @@ export const postSchema = z.object({
     )
     .nullable()
     .optional(),
-  content: z.any().refine((val) => val && typeof val === "object", {
+  content: z.unknown().refine((val) => val && typeof val === "object", {
     message: "Content must be a valid Tiptap JSON object",
   }),
   contentHtml: z.string().default(""),

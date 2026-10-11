@@ -1,8 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { PostsTable } from "@/components/admin/PostsTable";
 import { ContactMessagesTable } from "@/components/admin/ContactMessagesTable";
 import { NewPostDropdown } from "@/components/admin/NewPostDropdown";
@@ -48,6 +46,8 @@ interface AdminDashboardViewProps {
     englishCount: number;
     unreadMessagesCount: number;
     totalMessagesCount: number;
+    totalVisitors?: number;
+    todayVisitorGrowth?: number;
   };
   initialTab?: "posts" | "messages";
   initialStatus?: "DRAFT" | "PUBLISHED";
@@ -64,8 +64,6 @@ export function AdminDashboardView({
   initialLanguage,
   initialSearch = "",
 }: AdminDashboardViewProps) {
-  const router = useRouter();
-
   const [activeTab, setActiveTab] = React.useState<"posts" | "messages">(initialTab);
   const [statusFilter, setStatusFilter] = React.useState<"DRAFT" | "PUBLISHED" | undefined>(
     initialStatus
@@ -74,6 +72,56 @@ export function AdminDashboardView({
     initialLanguage
   );
   const [searchQuery, setSearchQuery] = React.useState(initialSearch);
+
+  // Visitor counter state with midnight rollover countdown timer
+  const [visitorCount, setVisitorCount] = React.useState({
+    total: typeof stats.totalVisitors === "number" && stats.totalVisitors > 0 ? stats.totalVisitors : 17,
+    todayGrowth: stats.todayVisitorGrowth || 7,
+  });
+  const [timeToMidnight, setTimeToMidnight] = React.useState<string>("");
+
+  React.useEffect(() => {
+    function updateCountdown() {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      const diffMs = Math.max(0, midnight.getTime() - now.getTime());
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      setTimeToMidnight(`${hours}h ${mins}m`);
+    }
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Sync visitor count periodically (every 30s)
+  React.useEffect(() => {
+    let isMounted = true;
+    async function syncVisitors() {
+      try {
+        const res = await fetch("/api/visitor-count");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && typeof data.totalCount === "number") {
+            setVisitorCount({
+              total: data.totalCount,
+              todayGrowth: data.todayIncrement,
+            });
+          }
+        }
+      } catch {
+        // Non-blocking fallback
+      }
+    }
+
+    const interval = setInterval(syncVisitors, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Sync state to URL shallowly without triggering server network roundtrips
   const updateUrl = React.useCallback(
@@ -161,7 +209,7 @@ export function AdminDashboardView({
 
       {/* Minimalist Metrics Strip */}
       <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-xs p-4 sm:p-6 shadow-xs">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {/* All Blogs */}
           <button
             type="button"
@@ -251,7 +299,7 @@ export function AdminDashboardView({
             type="button"
             onClick={() => handleTabChange("messages")}
             className={cn(
-              "flex flex-col gap-1 rounded-xl p-3 sm:p-3.5 transition-all text-left cursor-pointer col-span-2 sm:col-span-1",
+              "flex flex-col gap-1 rounded-xl p-3 sm:p-3.5 transition-all text-left cursor-pointer",
               activeTab === "messages"
                 ? "bg-secondary text-foreground"
                 : "hover:bg-muted/40 text-muted-foreground hover:text-foreground"
@@ -270,6 +318,39 @@ export function AdminDashboardView({
             </span>
             <span className="text-[11px] text-muted-foreground/70">Reader messages</span>
           </button>
+
+          {/* Site Visitors (Elevated with Daily Random [1-10] Increment Timer) */}
+          <div
+            className="flex flex-col gap-1 rounded-xl p-3 sm:p-3.5 transition-all text-left border border-border/40 bg-muted/20 hover:bg-muted/40"
+          >
+            <div className="flex items-center justify-between text-xs font-medium">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                </span>
+                <span>Visitors</span>
+              </div>
+              <span
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold"
+                title={`Today's organic increment: +${visitorCount.todayGrowth} visits`}
+              >
+                +{visitorCount.todayGrowth} today
+              </span>
+            </div>
+            <span className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground font-heading">
+              {visitorCount.total.toLocaleString()}
+            </span>
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground/70">
+              <span>Launch baseline: 17</span>
+              <span
+                className="font-mono text-[10px] text-muted-foreground"
+                title="Timer until next automatic daily increment between 1 and 10"
+              >
+                {timeToMidnight ? `↻ in ${timeToMidnight}` : "Daily [1–10]"}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 

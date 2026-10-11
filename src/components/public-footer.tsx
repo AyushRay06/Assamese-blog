@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { VisitorTracker } from "@/components/visitor-counter/VisitorTracker";
 
 export function PublicFooter() {
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="mt-auto border-t border-border/40 py-8 transition-colors">
+      <VisitorTracker />
       <div className="container mx-auto max-w-5xl px-4 sm:px-6">
         <div className="flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
           <p className="text-xs text-muted-foreground font-mono">

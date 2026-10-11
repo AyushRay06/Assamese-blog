@@ -83,9 +83,10 @@ ${message}
 
       console.log(`[Email Service] Live email dispatched successfully to ${receiverEmail}. Message ID: ${info.messageId}`);
       return { sent: true, messageId: info.messageId };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[Email Service Error] Failed to send email via SMTP:", err);
-      return { sent: false, error: err?.message || "Failed to dispatch email via SMTP" };
+      const errorMsg = err instanceof Error ? err.message : "Failed to dispatch email via SMTP";
+      return { sent: false, error: errorMsg };
     }
   }
 

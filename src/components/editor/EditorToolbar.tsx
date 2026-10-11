@@ -2,7 +2,6 @@
 
 import React, { useState, useRef } from "react";
 import { type Editor } from "@tiptap/react";
-import { compressImageClient } from "@/lib/image-compression";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -47,11 +46,9 @@ import {
   Command,
   RefreshCw,
   CheckCircle2,
-  Crop,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
-import { ImageCropModal, type CropResult, type AspectRatioOption } from "@/components/admin/ImageCropModal";
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -92,12 +89,8 @@ export function EditorToolbar({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const directFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Interactive Image Cropping & Framing
-  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
-  const [cropImageSrc, setCropImageSrc] = useState("");
-  const [cropModalTitle, setCropModalTitle] = useState("Crop & Frame Image");
-  const [cropAspectRatio, setCropAspectRatio] = useState<AspectRatioOption>("free");
-  const [cropTarget, setCropTarget] = useState<"dialog" | "direct">("dialog");
+  // In-body image alignment: center (default), left, right
+  const [imageAlignment, setImageAlignment] = useState<"center" | "left" | "right">("center");
 
   if (!editor) return null;
 
@@ -127,6 +120,7 @@ export function EditorToolbar({
     setImageUrl("");
     setLocalPreviewUrl("");
     setImageAlt("");
+    setImageAlignment("center");
     setImageDialogOpen(true);
   };
 
@@ -136,19 +130,23 @@ export function EditorToolbar({
       toast.error("Please provide an image URL or upload an image file");
       return;
     }
-    editor
-      .chain()
-      .focus()
-      .setImage({ src: finalUrl, alt: imageAlt || "Post illustration" })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (editor.chain().focus() as any)
+      .setImage({
+        src: finalUrl,
+        alt: imageAlt || "Blog illustration",
+        alignment: imageAlignment,
+      })
       .run();
     setImageDialogOpen(false);
     setImageUrl("");
     setLocalPreviewUrl("");
     setImageAlt("");
-    toast.success("Image inserted into blog body");
+    setImageAlignment("center");
+    toast.success("Image placed in blog body");
   };
 
-  // Handle file chosen from inside the Image Dialog -> opens interactive cropper
+  // Upload file chosen from inside the Image Dialog (no crop required)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -160,15 +158,41 @@ export function EditorToolbar({
 
     const localUrl = URL.createObjectURL(file);
     setLocalPreviewUrl(localUrl);
-    setCropImageSrc(localUrl);
-    setCropModalTitle("Crop & Frame Body Image");
-    setCropAspectRatio("free");
-    setCropTarget("dialog");
-    setIsCropModalOpen(true);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    try {
+      setIsUploading(true);
+      let uploadedUrl = "";
+      if (onImageUpload) {
+        uploadedUrl = await onImageUpload(file);
+      } else {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/admin/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          uploadedUrl = data.url;
+        }
+      }
+
+      if (uploadedUrl) {
+        setImageUrl(uploadedUrl);
+      } else {
+        setImageUrl(localUrl);
+      }
+      toast.success("Image uploaded! Ready to insert.");
+    } catch {
+      setImageUrl(localUrl);
+      toast.info("Image ready to insert.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
-  // Quick 1-click upload from toolbar -> opens interactive cropper before inserting
+  // Quick 1-click upload from toolbar directly into blog body (no crop required)
   const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
@@ -178,83 +202,39 @@ export function EditorToolbar({
       return;
     }
 
-    const objectUrl = URL.createObjectURL(rawFile);
-    setCropImageSrc(objectUrl);
-    setCropModalTitle("Crop & Frame Image for Blog Body");
-    setCropAspectRatio("16:9");
-    setCropTarget("direct");
-    setIsCropModalOpen(true);
-    if (directFileInputRef.current) directFileInputRef.current.value = "";
-  };
-
-  // Handle crop completion for body images
-  const handleCropComplete = async (result: CropResult) => {
-    if (cropTarget === "direct") {
-      try {
-        toast.loading("Uploading framed image...", { id: "direct-image-upload" });
-        let uploadedUrl = "";
-        if (onImageUpload) {
-          uploadedUrl = await onImageUpload(result.file);
-        } else {
-          const formData = new FormData();
-          formData.append("file", result.file);
-          const res = await fetch("/api/admin/upload", {
-            method: "POST",
-            body: formData,
-          });
-          if (res.ok) {
-            const data = await res.json();
-            uploadedUrl = data.url;
-          }
+    try {
+      toast.loading("Uploading image into blog body...", { id: "direct-image-upload" });
+      let uploadedUrl = "";
+      if (onImageUpload) {
+        uploadedUrl = await onImageUpload(rawFile);
+      } else {
+        const formData = new FormData();
+        formData.append("file", rawFile);
+        const res = await fetch("/api/admin/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          uploadedUrl = data.url;
         }
-
-        const finalSrc = uploadedUrl || result.dataUrl;
-        editor
-          .chain()
-          .focus()
-          .setImage({ src: finalSrc, alt: "Blog illustration" })
-          .run();
-        toast.success("Image framed and inserted into blog body!", { id: "direct-image-upload" });
-      } catch {
-        editor
-          .chain()
-          .focus()
-          .setImage({ src: result.dataUrl, alt: "Blog illustration" })
-          .run();
-        toast.info("Image inserted into blog body", { id: "direct-image-upload" });
       }
-    } else {
-      // Crop completed from within Image Dialog
-      try {
-        setIsUploading(true);
-        setLocalPreviewUrl(result.dataUrl);
-        setImageUrl(result.dataUrl);
 
-        let uploadedUrl = "";
-        if (onImageUpload) {
-          uploadedUrl = await onImageUpload(result.file);
-        } else {
-          const formData = new FormData();
-          formData.append("file", result.file);
-          const res = await fetch("/api/admin/upload", {
-            method: "POST",
-            body: formData,
-          });
-          if (res.ok) {
-            const data = await res.json();
-            uploadedUrl = data.url;
-          }
-        }
-
-        if (uploadedUrl) {
-          setImageUrl(uploadedUrl);
-        }
-        toast.success("Image cropped & framed! Click 'Insert into Blog' to place it.");
-      } catch {
-        toast.info("Image cropped and ready to insert.");
-      } finally {
-        setIsUploading(false);
-      }
+      const finalSrc = uploadedUrl || URL.createObjectURL(rawFile);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (editor.chain().focus() as any)
+        .setImage({ src: finalSrc, alt: "Blog illustration", alignment: "center" })
+        .run();
+      toast.success("Image inserted into blog body!", { id: "direct-image-upload" });
+    } catch {
+      const fallbackUrl = URL.createObjectURL(rawFile);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (editor.chain().focus() as any)
+        .setImage({ src: fallbackUrl, alt: "Blog illustration", alignment: "center" })
+        .run();
+      toast.info("Image inserted into blog body", { id: "direct-image-upload" });
+    } finally {
+      if (directFileInputRef.current) directFileInputRef.current.value = "";
     }
   };
 
@@ -413,39 +393,84 @@ export function EditorToolbar({
 
           <Separator orientation="vertical" className="mx-1 h-6" />
 
-          {/* Text Alignment */}
+          {/* Text & Image Alignment */}
           <Button
             type="button"
-            variant={editor.isActive({ textAlign: "left" }) ? "secondary" : "ghost"}
+            variant={
+              editor.isActive("image")
+                ? editor.getAttributes("image").alignment === "left"
+                  ? "secondary"
+                  : "ghost"
+                : editor.isActive({ textAlign: "left" })
+                ? "secondary"
+                : "ghost"
+            }
             size="icon"
             className="h-8 w-8"
-            onClick={() => editor.chain().focus().setTextAlign("left").run()}
+            onClick={() => {
+              if (editor.isActive("image")) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (editor.chain().focus() as any).updateAttributes("image", { alignment: "left" }).run();
+              } else {
+                editor.chain().focus().setTextAlign("left").run();
+              }
+            }}
             aria-label="Align Left"
-            title="Align Left"
+            title="Align Left (Text or Image)"
           >
             <AlignLeft className="h-4 w-4" />
           </Button>
 
           <Button
             type="button"
-            variant={editor.isActive({ textAlign: "center" }) ? "secondary" : "ghost"}
+            variant={
+              editor.isActive("image")
+                ? (!editor.getAttributes("image").alignment || editor.getAttributes("image").alignment === "center")
+                  ? "secondary"
+                  : "ghost"
+                : editor.isActive({ textAlign: "center" })
+                ? "secondary"
+                : "ghost"
+            }
             size="icon"
             className="h-8 w-8"
-            onClick={() => editor.chain().focus().setTextAlign("center").run()}
+            onClick={() => {
+              if (editor.isActive("image")) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (editor.chain().focus() as any).updateAttributes("image", { alignment: "center" }).run();
+              } else {
+                editor.chain().focus().setTextAlign("center").run();
+              }
+            }}
             aria-label="Align Center"
-            title="Align Center"
+            title="Align Center (Text or Image)"
           >
             <AlignCenter className="h-4 w-4" />
           </Button>
 
           <Button
             type="button"
-            variant={editor.isActive({ textAlign: "right" }) ? "secondary" : "ghost"}
+            variant={
+              editor.isActive("image")
+                ? editor.getAttributes("image").alignment === "right"
+                  ? "secondary"
+                  : "ghost"
+                : editor.isActive({ textAlign: "right" })
+                ? "secondary"
+                : "ghost"
+            }
             size="icon"
             className="h-8 w-8"
-            onClick={() => editor.chain().focus().setTextAlign("right").run()}
+            onClick={() => {
+              if (editor.isActive("image")) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (editor.chain().focus() as any).updateAttributes("image", { alignment: "right" }).run();
+              } else {
+                editor.chain().focus().setTextAlign("right").run();
+              }
+            }}
             aria-label="Align Right"
-            title="Align Right"
+            title="Align Right (Text or Image)"
           >
             <AlignRight className="h-4 w-4" />
           </Button>
@@ -759,49 +784,87 @@ export function EditorToolbar({
               />
             </div>
 
-            {(imageUrl || localPreviewUrl) && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">Image Preview</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setCropImageSrc(imageUrl || localPreviewUrl);
-                      setCropModalTitle("Crop & Re-frame Body Image");
-                      setCropAspectRatio("free");
-                      setCropTarget("dialog");
-                      setIsCropModalOpen(true);
-                    }}
-                    className="h-7 text-xs font-mono gap-1.5 text-primary hover:text-primary"
-                  >
-                    <Crop className="h-3 w-3" />
-                    <span>Crop & Frame</span>
-                  </Button>
-                </div>
-                <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imageUrl || localPreviewUrl}
-                  alt={imageAlt || "Preview"}
-                  className="h-full w-full object-contain bg-background/50"
-                />
-                {isUploading && (
-                  <div className="absolute inset-0 bg-background/80 backdrop-blur-xs flex flex-col items-center justify-center gap-1.5 z-10">
-                    <RefreshCw className="h-5 w-5 animate-spin text-primary" />
-                    <span className="text-xs font-medium">Uploading image...</span>
-                  </div>
-                )}
-                {!isUploading && imageUrl && (
-                  <div className="absolute bottom-2 left-2 right-2 bg-background/90 backdrop-blur-xs px-2.5 py-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>Upload complete &bull; Ready to insert</span>
-                  </div>
-                )}
+            {/* Image Alignment Option */}
+            <div className="space-y-1.5 pt-1">
+              <Label className="text-xs font-semibold">Image Alignment in Body</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={imageAlignment === "left" ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setImageAlignment("left")}
+                  className={cn(
+                    "gap-1.5 text-xs h-9 font-medium",
+                    imageAlignment === "left" && "bg-secondary text-foreground font-semibold border-foreground/30"
+                  )}
+                >
+                  <AlignLeft className="h-3.5 w-3.5" />
+                  <span>Left</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={imageAlignment === "center" ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setImageAlignment("center")}
+                  className={cn(
+                    "gap-1.5 text-xs h-9 font-medium",
+                    imageAlignment === "center" && "bg-secondary text-foreground font-semibold border-foreground/30"
+                  )}
+                >
+                  <AlignCenter className="h-3.5 w-3.5" />
+                  <span>Center</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={imageAlignment === "right" ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setImageAlignment("right")}
+                  className={cn(
+                    "gap-1.5 text-xs h-9 font-medium",
+                    imageAlignment === "right" && "bg-secondary text-foreground font-semibold border-foreground/30"
+                  )}
+                >
+                  <AlignRight className="h-3.5 w-3.5" />
+                  <span>Right</span>
+                </Button>
               </div>
             </div>
-          )}
+
+            {(imageUrl || localPreviewUrl) && (
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground">Image Preview</span>
+                  <span className="text-[11px] font-mono text-muted-foreground capitalize">
+                    {imageAlignment} aligned
+                  </span>
+                </div>
+                <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted flex items-center justify-center p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl || localPreviewUrl}
+                    alt={imageAlt || "Preview"}
+                    className={cn(
+                      "h-full max-h-48 object-contain rounded transition-all",
+                      imageAlignment === "left" && "mr-auto ml-0",
+                      imageAlignment === "center" && "mx-auto",
+                      imageAlignment === "right" && "ml-auto mr-0"
+                    )}
+                  />
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-xs flex flex-col items-center justify-center gap-1.5 z-10">
+                      <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+                      <span className="text-xs font-medium">Uploading image...</span>
+                    </div>
+                  )}
+                  {!isUploading && imageUrl && (
+                    <div className="absolute bottom-2 left-2 right-2 bg-background/90 backdrop-blur-xs px-2.5 py-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>Upload complete &bull; Ready to insert</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
@@ -972,18 +1035,6 @@ export function EditorToolbar({
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Interactive Image Cropper & Framing Modal */}
-      {isCropModalOpen && cropImageSrc && (
-        <ImageCropModal
-          open={isCropModalOpen}
-          onOpenChange={setIsCropModalOpen}
-          imageSrc={cropImageSrc}
-          title={cropModalTitle}
-          initialAspectRatio={cropAspectRatio}
-          onCropComplete={handleCropComplete}
-        />
-      )}
     </>
   );
 }

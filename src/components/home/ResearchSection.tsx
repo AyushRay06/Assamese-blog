@@ -44,7 +44,7 @@ export function ResearchSection() {
     <section id="research" className="relative py-16 sm:py-24">
       <div className="container mx-auto max-w-5xl px-4 sm:px-6">
         {/* Section Header */}
-        <div className="max-w-2xl space-y-3 mb-12 sm:mb-16">
+        <div className="max-w-3xl space-y-3 mb-12 sm:mb-16">
           <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
             Areas of Specialization &bull; Research
           </div>
@@ -52,7 +52,7 @@ export function ResearchSection() {
             Research &amp; Mathematical Focus
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Connecting mathematical theory with applications in networks, multicriteria decision making, social choice, and biological/communication networks.
+            Specializing in applied mathematics, cooperative game theory, network games, fuzzy sets, and aggregation operators. Connecting foundational mathematical theory with applications in networks, multicriteria decision making, social choice, and biological/communication networks.
           </p>
         </div>
 
