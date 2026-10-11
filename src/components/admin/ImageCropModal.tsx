@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,6 +13,10 @@ import {
   X,
   Move,
   Info,
+  Maximize2,
+  Minimize2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
@@ -49,7 +53,7 @@ function ImageCropModalContent({
   onOpenChange,
   imageSrc,
   filename = "cover-image.webp",
-  title = "Crop Cover Image",
+  title = "Crop Cover Image (16:9)",
   onCropComplete,
 }: ImageCropModalProps) {
   const [zoom, setZoom] = useState<number>(1);
@@ -62,8 +66,55 @@ function ImageCropModalContent({
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  const [frameSize, setFrameSize] = useState<{ w: number; h: number }>({ w: 640, h: 360 });
   const [loadError, setLoadError] = useState<string | null>(null);
   const dragStartRef = useRef<{ clientX: number; clientY: number; startX: number; startY: number } | null>(null);
+
+  // Measure container frame dynamically
+  const updateFrameDimensions = useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.width > 0) {
+        setFrameSize({
+          w: rect.width,
+          h: rect.height || (rect.width * 9) / 16,
+        });
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    updateFrameDimensions();
+    const handleResize = () => updateFrameDimensions();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [updateFrameDimensions]);
+
+  // Compute key scales:
+  // scaleFit: entire image fits inside 16:9 frame (shows whole image)
+  // scaleFill: image completely covers 16:9 frame (zero empty space/borders)
+  const { fitZoom, baseWidth, baseHeight } = useMemo(() => {
+    const fw = frameSize.w || 640;
+    const fh = frameSize.h || 360;
+    const nw = naturalSize.w || fw;
+    const nh = naturalSize.h || fh;
+
+    const sFit = Math.min(fw / nw, fh / nh);
+    const sFill = Math.max(fw / nw, fh / nh);
+
+    // Zoom factor required to fit the whole image when base display is sized to sFill
+    const fZoom = sFill > 0 ? sFit / sFill : 1;
+
+    // Base dimensions set to exactly FILL the 16:9 frame at zoom = 1.0
+    const bW = nw * sFill;
+    const bH = nh * sFill;
+
+    return {
+      fitZoom: fZoom,
+      baseWidth: bW,
+      baseHeight: bH,
+    };
+  }, [frameSize, naturalSize]);
 
   // Handle image load
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -72,18 +123,36 @@ function ImageCropModalContent({
     setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
     setImageLoaded(true);
     setOffset({ x: 0, y: 0 });
+    // Default zoom to 1.0 = exact 16:9 FILL (no empty spaces)
     setZoom(1);
+    updateFrameDimensions();
   };
+
+  const minZoom = Math.min(0.4, Math.max(0.1, fitZoom * 0.9));
+  const maxZoom = 6.0;
 
   // Zoom controls
   const handleZoomChange = (newZoom: number) => {
-    setZoom(Math.max(0.6, Math.min(3.5, newZoom)));
+    setZoom(Math.max(minZoom, Math.min(maxZoom, Math.round(newZoom * 100) / 100)));
   };
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     handleZoomChange(zoom + delta);
+  };
+
+  // Quick preset: Fill 16:9 (crops edges cleanly without empty space)
+  const handleFill169 = () => {
+    setZoom(1.0);
+    setOffset({ x: 0, y: 0 });
+    toast.success("Image scaled to fill 16:9 frame with no empty space");
+  };
+
+  // Quick preset: Fit Whole Image
+  const handleFitWhole = () => {
+    setZoom(fitZoom);
+    setOffset({ x: 0, y: 0 });
   };
 
   // Pointer drag to pan image
@@ -136,9 +205,7 @@ function ImageCropModalContent({
     imageElement: HTMLImageElement,
     exportWidth: number,
     exportHeight: number,
-    frameWidth: number,
-    onScreenWidth: number,
-    onScreenHeight: number
+    frameW: number
   ): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       try {
@@ -154,18 +221,22 @@ function ImageCropModalContent({
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
 
+        // Fill background with black in case user intentionally fitted whole image with margins
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillRect(0, 0, exportWidth, exportHeight);
+
+        // Scale factor between screen frame and high-res export canvas
+        const scaleMultiplier = exportWidth / frameW;
+
         // Translate to canvas center
         ctx.translate(canvas.width / 2, canvas.height / 2);
 
         // Apply rotation
         ctx.rotate((rotation * Math.PI) / 180);
 
-        // Scale factor between screen frame and high-res export canvas
-        const scaleMultiplier = exportWidth / frameWidth;
-
-        // Draw image with current pan offset and zoom
-        const drawWidth = onScreenWidth * zoom * scaleMultiplier;
-        const drawHeight = onScreenHeight * zoom * scaleMultiplier;
+        // Calculate rendered size on high-res canvas
+        const drawWidth = baseWidth * zoom * scaleMultiplier;
+        const drawHeight = baseHeight * zoom * scaleMultiplier;
         const drawX = offset.x * scaleMultiplier - drawWidth / 2;
         const drawY = offset.y * scaleMultiplier - drawHeight / 2;
 
@@ -180,7 +251,7 @@ function ImageCropModalContent({
             }
           },
           "image/webp",
-          0.9
+          0.92
         );
       } catch (err) {
         reject(err);
@@ -195,24 +266,17 @@ function ImageCropModalContent({
     try {
       setIsProcessing(true);
       const img = imageRef.current;
-      const container = containerRef.current;
-      if (!container) return;
+      const frameW = frameSize.w || 640;
 
-      const containerRect = container.getBoundingClientRect();
-      const frameWidth = containerRect.width;
-
-      // Output resolution locked strictly to 16:9 (1600 × 900 px)
+      // High-resolution output locked strictly to 16:9 (1600 × 900 px)
       const exportWidth = 1600;
       const exportHeight = 900;
-
-      const onScreenWidth = img.clientWidth;
-      const onScreenHeight = img.clientHeight;
 
       let blob: Blob;
 
       try {
         // Direct canvas draw
-        blob = await drawAndExport(img, exportWidth, exportHeight, frameWidth, onScreenWidth, onScreenHeight);
+        blob = await drawAndExport(img, exportWidth, exportHeight, frameW);
       } catch (taintErr) {
         // Fallback for CORS-protected remote URLs
         console.warn("Direct export tainted, using proxy fallback:", taintErr);
@@ -225,7 +289,7 @@ function ImageCropModalContent({
           pImg.src = proxyUrl;
         });
 
-        blob = await drawAndExport(proxiedImg, exportWidth, exportHeight, frameWidth, onScreenWidth, onScreenHeight);
+        blob = await drawAndExport(proxiedImg, exportWidth, exportHeight, frameW);
       }
 
       const cleanName = filename.replace(/\.[^/.]+$/, "") + ".webp";
@@ -247,8 +311,10 @@ function ImageCropModalContent({
     }
   };
 
+  const isUnderFilled = zoom < 0.99;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div
         className="w-full max-w-3xl bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] text-card-foreground animate-in zoom-in-95 duration-200"
         role="dialog"
@@ -267,18 +333,18 @@ function ImageCropModalContent({
                   {title}
                 </h3>
                 <Badge variant="secondary" className="text-[10px] font-mono px-2 py-0.5">
-                  16:9 Format
+                  16:9 Banner
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Drag to reposition &bull; Scroll or use the slider below to zoom
+                Drag to reposition &bull; Zoom in on small or square images to crop the 16:9 area
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
             title="Close dialog"
           >
             <X className="h-4 w-4" />
@@ -298,7 +364,7 @@ function ImageCropModalContent({
               aspectRatio: "16/9",
             }}
             className={cn(
-              "relative w-full max-w-2xl max-h-[52vh] overflow-hidden border-2 border-white/80 rounded-xl shadow-2xl bg-black select-none cursor-grab active:cursor-grabbing",
+              "relative w-full max-w-2xl max-h-[52vh] overflow-hidden border-2 border-white/80 rounded-xl shadow-2xl bg-neutral-900 select-none cursor-grab active:cursor-grabbing",
               isDragging && "cursor-grabbing"
             )}
           >
@@ -350,34 +416,51 @@ function ImageCropModalContent({
                   setLoadError("Failed to load image preview.");
                 }}
                 style={{
+                  width: `${baseWidth}px`,
+                  height: `${baseHeight}px`,
                   transform: `scale(${zoom}) rotate(${rotation}deg)`,
                   transformOrigin: "center center",
                   maxHeight: "none",
                   maxWidth: "none",
-                  transition: isDragging ? "none" : "transform 0.1s ease-out",
+                  transition: isDragging ? "none" : "transform 0.05s ease-out",
                 }}
-                className="pointer-events-auto cursor-grab active:cursor-grabbing object-contain select-none"
+                className="pointer-events-auto cursor-grab active:cursor-grabbing select-none block"
                 draggable={false}
               />
             </div>
 
             {/* Subtle Overlay Guide */}
-            <div className="pointer-events-none absolute bottom-2 right-2 z-20 bg-black/60 backdrop-blur-xs text-white/80 text-[10px] font-mono px-2 py-0.5 rounded-md flex items-center gap-1">
+            <div className="pointer-events-none absolute bottom-2 right-2 z-20 bg-black/70 backdrop-blur-xs text-white/90 text-[10px] font-mono px-2 py-0.5 rounded-md flex items-center gap-1.5 border border-white/10">
               <Move className="h-2.5 w-2.5" />
-              <span>Drag to Pan &bull; 16:9 Box</span>
+              <span>Drag to Pan &bull; 16:9 Frame</span>
+            </div>
+
+            {/* Fit / Fill Status Indicator */}
+            <div className="pointer-events-none absolute top-2 left-2 z-20">
+              {isUnderFilled ? (
+                <div className="bg-amber-950/80 border border-amber-600/60 backdrop-blur-xs text-amber-200 text-[10px] font-medium px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3 text-amber-400" />
+                  <span>Has empty borders &bull; Zoom in or click &quot;Fill 16:9&quot;</span>
+                </div>
+              ) : (
+                <div className="bg-emerald-950/80 border border-emerald-600/60 backdrop-blur-xs text-emerald-200 text-[10px] font-medium px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                  <span>16:9 Frame Filled</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Minimal Controls Bar */}
+        {/* Controls Bar */}
         <div className="px-5 py-3 border-t border-border/60 bg-muted/20 shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Zoom Slider */}
-            <div className="flex items-center gap-2.5 flex-1 max-w-xs">
+            {/* Zoom Slider & Steppers */}
+            <div className="flex items-center gap-2.5 flex-1 max-w-md">
               <button
                 type="button"
                 onClick={() => handleZoomChange(zoom - 0.15)}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
                 title="Zoom Out"
               >
                 <ZoomOut className="h-4 w-4" />
@@ -385,8 +468,8 @@ function ImageCropModalContent({
 
               <input
                 type="range"
-                min="0.6"
-                max="3.5"
+                min={minZoom}
+                max={maxZoom}
                 step="0.05"
                 value={zoom}
                 onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
@@ -396,25 +479,52 @@ function ImageCropModalContent({
               <button
                 type="button"
                 onClick={() => handleZoomChange(zoom + 0.15)}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
                 title="Zoom In"
               >
                 <ZoomIn className="h-4 w-4" />
               </button>
 
-              <span className="text-xs font-mono font-medium text-foreground min-w-[38px] text-right">
+              <span className="text-xs font-mono font-medium text-foreground min-w-[42px] text-right">
                 {Math.round(zoom * 100)}%
               </span>
             </div>
 
-            {/* Quick Actions */}
-            <div className="flex items-center gap-2 justify-end">
+            {/* Presets and Actions */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              <Button
+                type="button"
+                variant={!isUnderFilled ? "default" : "outline"}
+                size="sm"
+                onClick={handleFill169}
+                className={cn(
+                  "h-8 gap-1 text-xs font-mono cursor-pointer",
+                  !isUnderFilled && "bg-primary text-primary-foreground"
+                )}
+                title="Zoom to completely fill the 16:9 frame with no empty space"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+                <span>Fill 16:9</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleFitWhole}
+                className="h-8 gap-1 text-xs font-mono cursor-pointer"
+                title="Fit whole image inside the frame"
+              >
+                <Minimize2 className="h-3.5 w-3.5" />
+                <span>Fit All</span>
+              </Button>
+
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleRotate}
-                className="h-8 gap-1 text-xs font-mono"
+                className="h-8 gap-1 text-xs font-mono cursor-pointer"
                 title="Rotate 90 degrees"
               >
                 <RotateCw className="h-3.5 w-3.5" />
@@ -426,7 +536,7 @@ function ImageCropModalContent({
                 variant="ghost"
                 size="sm"
                 onClick={handleReset}
-                className="h-8 gap-1 text-xs font-mono text-muted-foreground"
+                className="h-8 gap-1 text-xs font-mono text-muted-foreground cursor-pointer"
                 title="Reset zoom & position"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
@@ -440,7 +550,9 @@ function ImageCropModalContent({
         <div className="flex items-center justify-between px-5 py-3.5 border-t border-border/60 bg-muted/30 shrink-0">
           <div className="text-xs text-muted-foreground font-mono">
             {naturalSize.w > 0 && (
-              <span>Source: {naturalSize.w} &times; {naturalSize.h} px &bull; Output: 16:9</span>
+              <span>
+                Source: {naturalSize.w} &times; {naturalSize.h} px &bull; Output: 1600 &times; 900 (16:9)
+              </span>
             )}
           </div>
 
@@ -451,7 +563,7 @@ function ImageCropModalContent({
               size="sm"
               disabled={isProcessing}
               onClick={() => onOpenChange(false)}
-              className="text-xs font-mono"
+              className="text-xs font-mono cursor-pointer"
             >
               Cancel
             </Button>
@@ -461,7 +573,7 @@ function ImageCropModalContent({
               size="sm"
               disabled={isProcessing || !imageLoaded}
               onClick={handleApplyCrop}
-              className="text-xs font-mono gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium px-4"
+              className="text-xs font-mono gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium px-4 cursor-pointer"
             >
               {isProcessing ? (
                 <>

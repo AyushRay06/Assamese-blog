@@ -136,6 +136,7 @@ export function EditorToolbar({
         src: finalUrl,
         alt: imageAlt || "Blog illustration",
         alignment: imageAlignment,
+        width: "100%",
       })
       .run();
     setImageDialogOpen(false);

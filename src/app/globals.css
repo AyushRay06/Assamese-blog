@@ -193,7 +193,7 @@
   outline-offset: 3px;
 }
 
-/* Image alignment rules for Editor and Published Blogs */
+/* Image alignment & sizing rules for Editor and Published Blogs */
 .ProseMirror img[data-align="left"],
 .prose img[data-align="left"],
 img.align-left {
@@ -216,4 +216,13 @@ img.align-right {
   margin-left: auto !important;
   margin-right: 0 !important;
   display: block !important;
+}
+
+.prose img {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.ProseMirror [data-drag-handle] {
+  touch-action: none;
 }
