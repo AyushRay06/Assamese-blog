@@ -12,9 +12,15 @@ interface LanguageFilterProps {
     en: number;
     as: number;
   };
+  className?: string;
 }
 
-export function LanguageFilter({ currentLang, basePath = "/blog", totalCounts }: LanguageFilterProps) {
+export function LanguageFilter({
+  currentLang,
+  basePath = "/blog",
+  totalCounts,
+  className,
+}: LanguageFilterProps) {
   const searchParams = useSearchParams();
   const active = (searchParams.get("lang") || currentLang || "ALL").toUpperCase();
 
@@ -40,7 +46,12 @@ export function LanguageFilter({ currentLang, basePath = "/blog", totalCounts }:
   ];
 
   return (
-    <div className="flex items-center gap-2 p-1 rounded-full bg-muted/30 border border-border/60">
+    <div
+      className={cn(
+        "inline-flex w-fit items-center gap-1.5 p-1 rounded-full bg-muted/30 border border-border/60 shadow-2xs",
+        className
+      )}
+    >
       {filters.map((filter) => {
         const isActive =
           filter.key === "ALL"
