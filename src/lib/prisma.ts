@@ -4,6 +4,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+if (
+  globalForPrisma.prisma &&
+  (!("subscriber" in globalForPrisma.prisma) ||
+   !("comment" in globalForPrisma.prisma) ||
+   !("postLike" in globalForPrisma.prisma))
+) {
+  globalForPrisma.prisma = undefined;
+}
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({

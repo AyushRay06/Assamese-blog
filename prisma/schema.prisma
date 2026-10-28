@@ -30,7 +30,10 @@ model Post {
   status      PostStatus @default(DRAFT)
   publishedAt DateTime?
   readingTime Int        @default(1)
+  likes       Int        @default(0)
   tags        Tag[]
+  comments    Comment[]
+  postLikes   PostLike[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -63,4 +66,46 @@ model SiteVisitor {
   extraVisits     Int      @default(0)
   lastUpdatedDate String   @default("")
   updatedAt       DateTime @updatedAt
+}
+
+model Subscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  isActive       Boolean   @default(true)
+  subscribedAt   DateTime  @default(now())
+  unsubscribedAt DateTime?
+
+  @@index([email])
+  @@index([isActive])
+}
+
+model Comment {
+  id           String    @id @default(cuid())
+  postId       String
+  post         Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId     String?
+  parent       Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies      Comment[] @relation("CommentReplies")
+  authorName   String
+  authorEmail  String?
+  content      String
+  isAdminReply Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([postId])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userHash  String
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userHash])
+  @@index([postId])
 }

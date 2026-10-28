@@ -67,13 +67,17 @@ export async function getPublishedPosts({
   }
 }
 
-export const getCachedPublishedPosts = unstable_cache(
-  async (language?: "EN" | "AS", page: number = 1, limit: number = 12) => {
-    return getPublishedPosts({ language, page, limit });
-  },
-  ["published-posts-cache"],
-  { revalidate: 60, tags: ["posts"] }
-);
+export function getCachedPublishedPosts(
+  language?: "EN" | "AS",
+  page: number = 1,
+  limit: number = 12
+) {
+  return unstable_cache(
+    () => getPublishedPosts({ language, page, limit }),
+    ["published-posts-cache", language || "ALL", String(page), String(limit)],
+    { revalidate: 60, tags: ["posts"] }
+  )();
+}
 
 export const getCachedPostCounts = unstable_cache(
   async () => {

@@ -3,13 +3,14 @@ import prisma from "@/lib/prisma";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminDashboardView } from "@/components/admin/AdminDashboardView";
 import { getLiveVisitorCount } from "@/lib/visitor-count";
+import { getAllCommentsForAdmin } from "@/lib/comments";
 
 interface AdminDashboardProps {
   searchParams: Promise<{
     search?: string;
     status?: "DRAFT" | "PUBLISHED";
     language?: "EN" | "AS";
-    tab?: "posts" | "messages";
+    tab?: "posts" | "messages" | "comments";
   }>;
 }
 
@@ -18,6 +19,7 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
 
   let posts: Awaited<ReturnType<typeof getAllPostsAdmin>> = [];
   let contactMessages: Awaited<ReturnType<typeof prisma.contactMessage.findMany>> = [];
+  let comments: Awaited<ReturnType<typeof getAllCommentsForAdmin>> = [];
   let stats = {
     totalPostsCount: 0,
     publishedCount: 0,
@@ -28,12 +30,23 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
     totalMessagesCount: 0,
     totalVisitors: 0,
     todayVisitorGrowth: 0,
+    totalSubscribers: 0,
+    totalCommentsCount: 0,
   };
 
   if (process.env.DATABASE_URL) {
     try {
-      // Execute 5 fast concurrent queries instead of multiple round trips
-      const [postStats, messageStats, fetchedPosts, fetchedMessages, visitorStats] = await Promise.all([
+      // Execute fast concurrent queries instead of multiple round trips
+      const [
+        postStats,
+        messageStats,
+        fetchedPosts,
+        fetchedMessages,
+        visitorStats,
+        subscriberCount,
+        fetchedComments,
+        commentCount,
+      ] = await Promise.all([
         prisma.post.groupBy({
           by: ["status", "language"],
           _count: { id: true },
@@ -48,10 +61,14 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
           take: 50,
         }),
         getLiveVisitorCount(),
+        prisma.subscriber.count({ where: { isActive: true } }).catch(() => 0),
+        getAllCommentsForAdmin().catch(() => []),
+        prisma.comment.count().catch(() => 0),
       ]);
 
       posts = fetchedPosts;
       contactMessages = fetchedMessages;
+      comments = fetchedComments;
 
       let totalPosts = 0;
       let published = 0;
@@ -86,6 +103,8 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
         totalMessagesCount: totalMsgs,
         totalVisitors: visitorStats.totalCount,
         todayVisitorGrowth: visitorStats.todayIncrement,
+        totalSubscribers: subscriberCount,
+        totalCommentsCount: commentCount,
       };
     } catch (err) {
       console.warn("Admin dashboard database error:", err);
@@ -107,8 +126,15 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
         <AdminDashboardView
           initialPosts={posts}
           initialMessages={contactMessages}
+          initialComments={comments}
           stats={stats}
-          initialTab={params.tab === "messages" ? "messages" : "posts"}
+          initialTab={
+            params.tab === "comments"
+              ? "comments"
+              : params.tab === "messages"
+              ? "messages"
+              : "posts"
+          }
           initialStatus={params.status}
           initialLanguage={params.language}
           initialSearch={params.search}

@@ -10,6 +10,7 @@ interface ArticleReaderViewProps {
   language: LanguageCode;
   title: string;
   slug: string;
+  initialLikes?: number;
 }
 
 export function ArticleReaderView({
@@ -17,15 +18,17 @@ export function ArticleReaderView({
   language,
   title,
   slug,
+  initialLikes = 0,
 }: ArticleReaderViewProps) {
   const [fontSize, setFontSize] = useState<"normal" | "comfortable" | "spacious">("normal");
 
   return (
     <div className="space-y-4">
-      {/* Top interactive utility strip (reading progress bar, social share, font size scaler) */}
+      {/* Top interactive utility strip (reading progress bar, social share, font size scaler, like button) */}
       <ArticleInteractiveBar
         title={title}
         slug={slug}
+        initialLikes={initialLikes}
         onFontSizeChange={setFontSize}
       />
 

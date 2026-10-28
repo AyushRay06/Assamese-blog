@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { VisitorTracker } from "@/components/visitor-counter/VisitorTracker";
+import { FooterVisitorBadge } from "@/components/visitor-counter/FooterVisitorBadge";
 
 export function PublicFooter() {
   const currentYear = new Date().getFullYear();
@@ -13,7 +14,9 @@ export function PublicFooter() {
             Surajit Borkotokey &bull; Department of Mathematics, Dibrugarh University
           </p>
 
-          <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-4 text-xs text-muted-foreground font-mono">
+            <FooterVisitorBadge />
+            <span>&bull;</span>
             <Link
               href="/blog"
               className="transition-colors hover:text-foreground"

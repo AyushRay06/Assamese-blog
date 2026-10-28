@@ -7,6 +7,7 @@ import { verifyBasicAuthHeader, checkRateLimit } from "@/lib/auth";
 import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { PostStatus, Language } from "@prisma/client";
+import { notifySubscribersOfNewPost } from "@/lib/subscribers";
 
 function extractPlainText(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -147,6 +148,16 @@ export async function PATCH(
         },
       },
     });
+
+    if (existingPost.status !== PostStatus.PUBLISHED && updated.status === PostStatus.PUBLISHED) {
+      notifySubscribersOfNewPost({
+        title: updated.title,
+        slug: updated.slug,
+        excerpt: updated.excerpt,
+        language: updated.language,
+        readingTime: updated.readingTime,
+      }).catch(() => {});
+    }
 
     try {
       revalidatePath("/");

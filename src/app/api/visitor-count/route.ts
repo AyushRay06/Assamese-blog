@@ -9,6 +9,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       count: stats.totalCount,
+      totalCount: stats.totalCount,
       todayIncrement: stats.todayIncrement,
       date: stats.todayDateStr,
     });

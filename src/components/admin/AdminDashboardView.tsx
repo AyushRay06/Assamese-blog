@@ -10,8 +10,11 @@ import {
   FileText,
   Mail,
   RotateCcw,
+  Users,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "cn";
+import { AdminCommentsTable, AdminCommentItem } from "@/components/admin/AdminCommentsTable";
 
 interface PostItem {
   id: string;
@@ -38,6 +41,7 @@ interface ContactMessageItem {
 interface AdminDashboardViewProps {
   initialPosts: PostItem[];
   initialMessages: ContactMessageItem[];
+  initialComments?: AdminCommentItem[];
   stats: {
     totalPostsCount: number;
     publishedCount: number;
@@ -48,8 +52,10 @@ interface AdminDashboardViewProps {
     totalMessagesCount: number;
     totalVisitors?: number;
     todayVisitorGrowth?: number;
+    totalSubscribers?: number;
+    totalCommentsCount?: number;
   };
-  initialTab?: "posts" | "messages";
+  initialTab?: "posts" | "messages" | "comments";
   initialStatus?: "DRAFT" | "PUBLISHED";
   initialLanguage?: "EN" | "AS";
   initialSearch?: string;
@@ -58,13 +64,14 @@ interface AdminDashboardViewProps {
 export function AdminDashboardView({
   initialPosts,
   initialMessages,
+  initialComments = [],
   stats,
   initialTab = "posts",
   initialStatus,
   initialLanguage,
   initialSearch = "",
 }: AdminDashboardViewProps) {
-  const [activeTab, setActiveTab] = React.useState<"posts" | "messages">(initialTab);
+  const [activeTab, setActiveTab] = React.useState<"posts" | "messages" | "comments">(initialTab);
   const [statusFilter, setStatusFilter] = React.useState<"DRAFT" | "PUBLISHED" | undefined>(
     initialStatus
   );
@@ -125,7 +132,7 @@ export function AdminDashboardView({
 
   // Sync state to URL shallowly without triggering server network roundtrips
   const updateUrl = React.useCallback(
-    (tab: "posts" | "messages", status?: string, language?: string, search?: string) => {
+    (tab: "posts" | "messages" | "comments", status?: string, language?: string, search?: string) => {
       const params = new URLSearchParams();
       if (tab !== "posts") params.set("tab", tab);
       if (status) params.set("status", status);
@@ -138,7 +145,7 @@ export function AdminDashboardView({
     []
   );
 
-  const handleTabChange = (tab: "posts" | "messages") => {
+  const handleTabChange = (tab: "posts" | "messages" | "comments") => {
     setActiveTab(tab);
     updateUrl(tab, statusFilter, languageFilter, searchQuery);
   };
@@ -209,7 +216,7 @@ export function AdminDashboardView({
 
       {/* Minimalist Metrics Strip */}
       <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-xs p-4 sm:p-6 shadow-xs">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           {/* All Blogs */}
           <button
             type="button"
@@ -351,6 +358,25 @@ export function AdminDashboardView({
               </span>
             </div>
           </div>
+
+          {/* Email Subscribers */}
+          <div className="flex flex-col gap-1 rounded-xl p-3 sm:p-3.5 transition-all text-left border border-border/40 bg-muted/20 hover:bg-muted/40">
+            <div className="flex items-center justify-between text-xs font-medium">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Users className="h-3.5 w-3.5 text-primary" />
+                <span>Subscribers</span>
+              </div>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                Active
+              </span>
+            </div>
+            <span className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground font-heading">
+              {(stats.totalSubscribers || 0).toLocaleString()}
+            </span>
+            <span className="text-[11px] text-muted-foreground/70">
+              Email readers
+            </span>
+          </div>
         </div>
       </div>
 
@@ -394,11 +420,33 @@ export function AdminDashboardView({
                 <span className="h-1.5 w-1.5 rounded-full bg-primary" />
               )}
             </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("comments")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium transition-all cursor-pointer",
+                activeTab === "comments"
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span>Comments</span>
+              <span className="text-[11px] opacity-70 font-mono">
+                ({stats.totalCommentsCount || initialComments.length})
+              </span>
+            </button>
           </div>
 
           {activeTab === "posts" && (
             <div className="text-xs text-muted-foreground">
               Showing {filteredPosts.length} of {stats.totalPostsCount} blogs
+            </div>
+          )}
+          {activeTab === "comments" && (
+            <div className="text-xs text-muted-foreground">
+              {stats.totalCommentsCount || initialComments.length} reader comments &amp; feedback
             </div>
           )}
         </div>
@@ -536,6 +584,13 @@ export function AdminDashboardView({
         {activeTab === "messages" && (
           <div className="space-y-4">
             <ContactMessagesTable messages={initialMessages} />
+          </div>
+        )}
+
+        {/* TAB CONTENT: COMMENTS & READER FEEDBACK */}
+        {activeTab === "comments" && (
+          <div className="space-y-4">
+            <AdminCommentsTable initialComments={initialComments} />
           </div>
         )}
       </div>

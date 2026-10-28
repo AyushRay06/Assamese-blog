@@ -9,19 +9,23 @@ import {
   MessageCircle,
   ExternalLink,
   Type,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
+import { BlogLikeButton } from "./BlogLikeButton";
 
 interface ArticleInteractiveBarProps {
   title: string;
   slug: string;
+  initialLikes?: number;
   onFontSizeChange?: (size: "normal" | "comfortable" | "spacious") => void;
 }
 
 export function ArticleInteractiveBar({
   title,
   slug,
+  initialLikes = 0,
   onFontSizeChange,
 }: ArticleInteractiveBarProps) {
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -122,10 +126,24 @@ export function ArticleInteractiveBar({
       </div>
 
       {/* 2. Article Interaction Strip */}
-      <div className="flex items-center justify-between gap-3 py-3 px-4 rounded-xl border border-border/60 bg-muted/20 backdrop-blur-sm text-muted-foreground my-6">
-        <div className="flex items-center gap-1.5 text-xs font-mono">
-          <Share2 className="h-3.5 w-3.5 text-primary" />
-          <span className="hidden sm:inline">Share this essay:</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 py-2.5 px-4 rounded-xl border border-border/60 bg-muted/20 backdrop-blur-sm text-muted-foreground my-6">
+        <div className="flex items-center gap-2">
+          {/* Blog Like Action */}
+          <BlogLikeButton
+            slug={slug}
+            initialLikes={initialLikes}
+            variant="inline"
+          />
+
+          {/* Jump to Comments */}
+          <a
+            href="#comments"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border border-border/50 hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            title="Jump to discussion and comments"
+          >
+            <MessageSquare className="h-3.5 w-3.5 text-primary" />
+            <span className="text-[11px] font-medium hidden sm:inline">Comments</span>
+          </a>
         </div>
 
         <div className="flex items-center gap-1.5">

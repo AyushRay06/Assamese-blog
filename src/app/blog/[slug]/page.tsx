@@ -8,6 +8,8 @@ import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { ArticleReaderView } from "@/components/blog/ArticleReaderView";
 import { BlogCoverImage } from "@/components/blog/BlogCoverImage";
+import { BlogLikeButton } from "@/components/blog/BlogLikeButton";
+import { BlogCommentsSection } from "@/components/blog/BlogCommentsSection";
 import {
   Calendar,
   Clock,
@@ -278,18 +280,28 @@ export default async function SinglePostPage({ params }: PostPageProps) {
             </div>
           )}
 
-          {/* Article Body with dynamic font size scaler and interactive bar */}
+          {/* Article Body with dynamic font size scaler, like button, and interactive bar */}
           <article lang={langConfig.langAttr} className="relative">
             <ArticleReaderView
               contentHtml={post.contentHtml}
               language={langCode}
               title={post.title}
               slug={post.slug}
+              initialLikes={post.likes ?? 0}
             />
           </article>
 
+          {/* Prominent Reaction & Like Card */}
+          <div className="mt-12">
+            <BlogLikeButton
+              slug={post.slug}
+              initialLikes={post.likes ?? 0}
+              variant="prominent"
+            />
+          </div>
+
           {/* Author Biography Section */}
-          <section className="mt-16 p-6 sm:p-8 rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 shadow-sm">
+          <section className="mt-14 p-6 sm:p-8 rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 shadow-sm">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
               <div className="relative h-18 w-18 shrink-0 overflow-hidden rounded-2xl border-2 border-primary/20 shadow-md">
                 <Image
@@ -325,6 +337,12 @@ export default async function SinglePostPage({ params }: PostPageProps) {
               </div>
             </div>
           </section>
+
+          {/* Interactive Comments & Reader Feedback */}
+          <BlogCommentsSection
+            slug={post.slug}
+            isAssamese={isAssamese}
+          />
 
           {/* Related / More Writings Section */}
           {relatedPosts && relatedPosts.length > 0 && (

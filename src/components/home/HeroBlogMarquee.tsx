@@ -75,15 +75,15 @@ export function HeroBlogMarquee({ posts = [], className }: HeroBlogMarqueeProps)
       <Link
         key={uniqueKey}
         href={href}
-        className="group/card flex items-center justify-between gap-3 p-2.5 sm:p-3 rounded-xl border border-border/70 bg-card/90 hover:bg-card hover:border-foreground/30 hover:shadow-xs transition-all select-none cursor-pointer"
+        className="group/card flex items-center justify-between gap-2.5 p-2 sm:p-2.5 rounded-lg border border-border/70 bg-card/90 hover:bg-card hover:border-foreground/30 hover:shadow-xs transition-all select-none cursor-pointer"
         title={post.title}
       >
-        <div className="space-y-1 min-w-0 flex-1 text-left">
+        <div className="space-y-0.5 min-w-0 flex-1 text-left">
           {/* Tag & Reading Time */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span
               className={cn(
-                "text-[10px] font-mono px-1.5 py-0.5 rounded font-medium shrink-0",
+                "text-[9px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded font-medium shrink-0",
                 isAssamese
                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                   : "bg-primary/10 text-primary border border-primary/20"
@@ -93,7 +93,7 @@ export function HeroBlogMarquee({ posts = [], className }: HeroBlogMarqueeProps)
             </span>
 
             {post.readingTime && (
-              <span className="text-[11px] font-mono text-muted-foreground/70">
+              <span className="text-[10px] font-mono text-muted-foreground/70">
                 {post.readingTime} min read
               </span>
             )}
@@ -102,7 +102,7 @@ export function HeroBlogMarquee({ posts = [], className }: HeroBlogMarqueeProps)
           {/* Title */}
           <h4
             className={cn(
-              "text-xs sm:text-[13px] font-semibold tracking-tight text-foreground group-hover/card:text-primary transition-colors line-clamp-1",
+              "text-xs sm:text-[12.5px] font-medium tracking-tight text-foreground group-hover/card:text-primary transition-colors line-clamp-1",
               isAssamese && "font-assamese"
             )}
           >
@@ -111,20 +111,20 @@ export function HeroBlogMarquee({ posts = [], className }: HeroBlogMarqueeProps)
         </div>
 
         {/* Action Icon */}
-        <div className="p-1.5 rounded-lg bg-muted/40 text-muted-foreground group-hover/card:bg-foreground group-hover/card:text-background transition-all shrink-0">
-          <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover/card:translate-x-0.5 group-hover/card:-translate-y-0.5" />
+        <div className="p-1 rounded bg-muted/40 text-muted-foreground group-hover/card:bg-foreground group-hover/card:text-background transition-all shrink-0">
+          <ArrowUpRight className="h-3 w-3 transition-transform group-hover/card:translate-x-0.5 group-hover/card:-translate-y-0.5" />
         </div>
       </Link>
     );
   };
 
   return (
-    <div className={cn("w-full max-w-lg lg:max-w-xl pt-1 sm:pt-2", className)}>
-      <div className="rounded-2xl border border-border/80 bg-card/75 backdrop-blur-md overflow-hidden shadow-xs">
+    <div className={cn("w-full max-w-md lg:max-w-[480px] pt-1", className)}>
+      <div className="rounded-xl border border-border/80 bg-card/75 backdrop-blur-md overflow-hidden shadow-xs">
         {/* Top Header Bar */}
-        <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/60 bg-muted/25">
-          <div className="flex items-center gap-2 text-xs font-mono font-medium text-foreground">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60 bg-muted/25">
+          <div className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <span className="tracking-wider uppercase font-semibold">
               Recent Writings &bull; শেহতীয়া লেখা
             </span>
@@ -132,16 +132,16 @@ export function HeroBlogMarquee({ posts = [], className }: HeroBlogMarqueeProps)
 
           <Link
             href="/blog"
-            className="text-[11px] font-mono text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            className="text-[10px] font-mono text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
             title="Browse all blog essays"
           >
             <span>All Posts</span>
-            <ArrowUpRight className="h-3 w-3" />
+            <ArrowUpRight className="h-2.5 w-2.5" />
           </Link>
         </div>
 
         {/* Vertical Marquee Window */}
-        <div className="relative h-[185px] sm:h-[200px] overflow-hidden p-2.5">
+        <div className="relative h-[116px] sm:h-[124px] overflow-hidden p-2">
           {/* Top & Bottom Soft Gradient Fades */}
           <div
             className="pointer-events-none absolute top-0 inset-x-0 h-6 bg-gradient-to-b from-card via-card/70 to-transparent z-10"

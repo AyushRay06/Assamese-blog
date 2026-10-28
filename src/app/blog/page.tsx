@@ -99,9 +99,14 @@ export default async function BlogArchivePage({ searchParams }: BlogArchivePageP
         <section className="py-14 sm:py-20">
           <div className="container mx-auto max-w-5xl px-4 sm:px-6">
             {posts.length > 0 ? (
-              <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {posts.map((post, idx) => (
-                  <PostCard key={post.id} post={post} priority={idx < 3} />
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    priority={idx < 3}
+                    showPlaceholder={true}
+                  />
                 ))}
               </div>
             ) : (

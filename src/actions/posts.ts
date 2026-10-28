@@ -7,6 +7,7 @@ import { calculateReadingTime, LanguageCode } from "@/lib/languages";
 import { assertAdminAuthorized } from "@/lib/auth";
 import { revalidatePath, updateTag } from "next/cache";
 import { PostStatus, Language } from "@prisma/client";
+import { notifySubscribersOfNewPost } from "@/lib/subscribers";
 
 function extractPlainText(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -85,6 +86,16 @@ export async function createPostAction(
         },
       },
     });
+
+    if (post.status === PostStatus.PUBLISHED) {
+      notifySubscribersOfNewPost({
+        title: post.title,
+        slug: post.slug,
+        excerpt: post.excerpt,
+        language: post.language,
+        readingTime: post.readingTime,
+      }).catch(() => {});
+    }
 
     revalidatePath("/");
     revalidatePath("/blog");
@@ -189,6 +200,16 @@ export async function updatePostAction(
       },
     });
 
+    if (currentPost.status !== PostStatus.PUBLISHED && updated.status === PostStatus.PUBLISHED) {
+      notifySubscribersOfNewPost({
+        title: updated.title,
+        slug: updated.slug,
+        excerpt: updated.excerpt,
+        language: updated.language,
+        readingTime: updated.readingTime,
+      }).catch(() => {});
+    }
+
     revalidatePath("/");
     revalidatePath("/blog");
     revalidatePath(`/blog/${currentPost.slug}`);
@@ -280,6 +301,16 @@ export async function togglePostStatusAction(
         publishedAt,
       },
     });
+
+    if (updated.status === PostStatus.PUBLISHED) {
+      notifySubscribersOfNewPost({
+        title: updated.title,
+        slug: updated.slug,
+        excerpt: updated.excerpt,
+        language: updated.language,
+        readingTime: updated.readingTime,
+      }).catch(() => {});
+    }
 
     revalidatePath("/");
     revalidatePath("/blog");
