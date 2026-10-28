@@ -102,8 +102,8 @@ export function HeroBlogMarquee({ posts = [], className }: HeroBlogMarqueeProps)
           {/* Title */}
           <h4
             className={cn(
-              "text-xs sm:text-[12.5px] font-medium tracking-tight text-foreground group-hover/card:text-primary transition-colors line-clamp-1",
-              isAssamese && "font-assamese"
+              "text-xs sm:text-[13px] font-medium tracking-tight text-foreground group-hover/card:text-primary transition-colors line-clamp-2 leading-snug",
+              isAssamese && "font-assamese leading-snug"
             )}
           >
             {post.title}
@@ -111,7 +111,7 @@ export function HeroBlogMarquee({ posts = [], className }: HeroBlogMarqueeProps)
         </div>
 
         {/* Action Icon */}
-        <div className="p-1 rounded bg-muted/40 text-muted-foreground group-hover/card:bg-foreground group-hover/card:text-background transition-all shrink-0">
+        <div className="p-1 rounded bg-muted/40 text-muted-foreground group-hover/card:bg-foreground group-hover/card:text-background transition-all shrink-0 self-center">
           <ArrowUpRight className="h-3 w-3 transition-transform group-hover/card:translate-x-0.5 group-hover/card:-translate-y-0.5" />
         </div>
       </Link>
@@ -119,7 +119,7 @@ export function HeroBlogMarquee({ posts = [], className }: HeroBlogMarqueeProps)
   };
 
   return (
-    <div className={cn("w-full max-w-md lg:max-w-[480px] pt-1", className)}>
+    <div className={cn("w-full max-w-full sm:max-w-xl lg:max-w-[520px] pt-1", className)}>
       <div className="rounded-xl border border-border/80 bg-card/75 backdrop-blur-md overflow-hidden shadow-xs">
         {/* Top Header Bar */}
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60 bg-muted/25">
@@ -141,7 +141,7 @@ export function HeroBlogMarquee({ posts = [], className }: HeroBlogMarqueeProps)
         </div>
 
         {/* Vertical Marquee Window */}
-        <div className="relative h-[116px] sm:h-[124px] overflow-hidden p-2">
+        <div className="relative h-[126px] sm:h-[134px] overflow-hidden p-2">
           {/* Top & Bottom Soft Gradient Fades */}
           <div
             className="pointer-events-none absolute top-0 inset-x-0 h-6 bg-gradient-to-b from-card via-card/70 to-transparent z-10"
@@ -152,10 +152,10 @@ export function HeroBlogMarquee({ posts = [], className }: HeroBlogMarqueeProps)
             aria-hidden="true"
           />
 
-          {/* Vertical Scrolling Track */}
+          {/* Vertical Scrolling Track - Calmer and slower pace (44s) for effortless reading */}
           <div
-            className="flex flex-col animate-marquee-vertical hover:[animation-play-state:paused] gap-2.5"
-            style={{ animationDuration: "20s" }}
+            className="flex flex-col animate-marquee-vertical hover:[animation-play-state:paused] active:[animation-play-state:paused] focus-within:[animation-play-state:paused] gap-2.5"
+            style={{ animationDuration: "44s" }}
           >
             {/* Set A */}
             <div className="flex flex-col gap-2.5 shrink-0">

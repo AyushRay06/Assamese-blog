@@ -14,14 +14,14 @@ export function HeroSection({ posts }: HeroSectionProps) {
       <div className="container mx-auto max-w-5xl px-4 sm:px-6">
         <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-12">
           {/* Column: Academic Persona & Bio */}
-          <div className="space-y-3 sm:space-y-4 lg:col-span-7 order-2 lg:order-1 flex flex-col items-center lg:items-start text-center lg:text-left">
+          <div className="space-y-3 sm:space-y-4 lg:col-span-7 order-2 lg:order-1 flex flex-col items-center lg:items-start text-center lg:text-left w-full">
             <div className="space-y-2 sm:space-y-2.5 w-full">
               <h1 className="font-heading text-2xl sm:text-3xl lg:text-4xl xl:text-[42px] font-semibold tracking-tight text-foreground leading-[1.18]">
                 Prof. Surajit Borkotokey
               </h1>
 
               {/* Academic Credentials & Leadership Stack */}
-              <div className="space-y-1 text-center lg:text-left max-w-lg text-xs sm:text-[13px]">
+              <div className="space-y-1 text-center lg:text-left max-w-lg text-xs sm:text-[13px] mx-auto lg:mx-0">
                 <p className="font-semibold text-foreground text-sm sm:text-[15px]">
                   Professor of Mathematics
                 </p>
@@ -43,7 +43,7 @@ export function HeroSection({ posts }: HeroSectionProps) {
             </div>
 
             {/* Blogs Marquee placed directly under the university badge */}
-            <HeroBlogMarquee posts={posts} />
+            <HeroBlogMarquee posts={posts} className="w-full" />
           </div>
 
           {/* Column: Hero Image of Prof. Surajit Borkotokey & Live Visitor Counter */}
