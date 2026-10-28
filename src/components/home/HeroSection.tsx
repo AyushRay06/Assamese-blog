@@ -3,12 +3,14 @@
 import * as React from "react";
 import Image from "next/image";
 import { HeroBlogMarquee, type MarqueePost } from "./HeroBlogMarquee";
+import { HeroVisitorBadge } from "./HeroVisitorBadge";
 
 interface HeroSectionProps {
   posts?: MarqueePost[];
+  visitorCount?: number;
 }
 
-export function HeroSection({ posts }: HeroSectionProps) {
+export function HeroSection({ posts, visitorCount }: HeroSectionProps) {
   return (
     <section className="relative py-8 sm:py-14 lg:py-16">
       <div className="container mx-auto max-w-5xl px-4 sm:px-6">
@@ -47,8 +49,7 @@ export function HeroSection({ posts }: HeroSectionProps) {
           </div>
 
           {/* Column: Hero Image of Prof. Surajit Borkotokey & Live Visitor Counter */}
-          {/* Column: Hero Image of Prof. Surajit Borkotokey */}
-          <div className="lg:col-span-5 order-1 lg:order-2 flex justify-center">
+          <div className="lg:col-span-5 order-1 lg:order-2 flex flex-col items-center gap-3.5 justify-center">
             <div className="relative aspect-square w-52 sm:w-60 lg:w-72 overflow-hidden rounded-full border-2 border-border/80 bg-muted/20 shadow-xl ring-4 ring-muted/30 transition-transform duration-300 hover:scale-[1.02]">
               <Image
                 src="/images/surajit-borkotokey-hero.jpg"
@@ -59,6 +60,8 @@ export function HeroSection({ posts }: HeroSectionProps) {
                 priority
               />
             </div>
+            {/* Live Reader & Visitor Count Pill */}
+            <HeroVisitorBadge initialCount={visitorCount} />
           </div>
         </div>
       </div>

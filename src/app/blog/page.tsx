@@ -15,7 +15,42 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Blogs & Writings | Prof. Surajit Borkotokey",
   description:
-    "Bilingual scholarly archive of essays, mathematical notes, and cultural reflections across English and Assamese by Prof. Surajit Borkotokey.",
+    "Bilingual scholarly archive of essays, mathematical reflections, and cultural writings across English and Assamese (অসমীয়া) by Prof. Surajit Borkotokey.",
+  alternates: {
+    canonical: "/blog",
+  },
+  keywords: [
+    "Prof. Surajit Borkotokey Blogs",
+    "Assamese Blog",
+    "অসমীয়া ব্লগ",
+    "অসমীয়া প্ৰবন্ধ",
+    "Cooperative Game Theory Essays",
+    "Mathematical Reflections",
+    "Dibrugarh University Publications",
+    "Bilingual Writings",
+  ],
+  openGraph: {
+    title: "Blogs & Writings | Prof. Surajit Borkotokey",
+    description:
+      "Bilingual scholarly archive of essays, mathematical reflections, and cultural writings across English and Assamese by Prof. Surajit Borkotokey.",
+    url: "/blog",
+    type: "website",
+    images: [
+      {
+        url: "/images/surajit-borkotokey-hero.jpg",
+        width: 800,
+        height: 800,
+        alt: "Prof. Surajit Borkotokey - Blogs & Writings",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blogs & Writings | Prof. Surajit Borkotokey",
+    description:
+      "Bilingual scholarly archive of essays and reflections across English and Assamese by Prof. Surajit Borkotokey.",
+    images: ["/images/surajit-borkotokey-hero.jpg"],
+  },
 };
 
 interface BlogArchivePageProps {

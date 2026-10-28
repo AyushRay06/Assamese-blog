@@ -22,6 +22,7 @@ import {
 import prisma from "@/lib/prisma";
 import { PostStatus } from "@prisma/client";
 import { cn } from "cn";
+import { BlogPostJsonLd } from "@/components/seo/JsonLd";
 
 interface PostPageProps {
   params: Promise<{ slug: string }>;
@@ -57,10 +58,22 @@ export async function generateMetadata({
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const postUrl = `${siteUrl}/blog/${post.slug}`;
+  const isAssamese = post.language === "AS";
 
   return {
     title: `${post.title} | Prof. Surajit Borkotokey`,
     description: post.excerpt || `Read "${post.title}" by Prof. Surajit Borkotokey.`,
+    authors: [{ name: "Prof. Surajit Borkotokey", url: siteUrl }],
+    creator: "Prof. Surajit Borkotokey",
+    publisher: "Prof. Surajit Borkotokey",
+    keywords: [
+      post.title,
+      "Prof. Surajit Borkotokey",
+      "Surajit Borkotokey",
+      "Dibrugarh University",
+      isAssamese ? "অসমীয়া প্ৰবন্ধ" : "English Essay",
+      ...(post.tags?.map((t) => t.name) || []),
+    ],
     alternates: {
       canonical: postUrl,
     },
@@ -71,13 +84,18 @@ export async function generateMetadata({
       type: "article",
       publishedTime: post.publishedAt?.toISOString(),
       modifiedTime: post.updatedAt.toISOString(),
-      images: post.coverImage ? [{ url: post.coverImage }] : undefined,
+      locale: isAssamese ? "as_IN" : "en_US",
+      images: post.coverImage
+        ? [{ url: post.coverImage }]
+        : [{ url: `${siteUrl}/images/surajit-borkotokey-hero.jpg` }],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.excerpt || undefined,
-      images: post.coverImage ? [post.coverImage] : undefined,
+      images: post.coverImage
+        ? [post.coverImage]
+        : [`${siteUrl}/images/surajit-borkotokey-hero.jpg`],
     },
   };
 }
@@ -112,6 +130,15 @@ export default async function SinglePostPage({ params }: PostPageProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-background relative selection:bg-primary/20 selection:text-foreground">
+      <BlogPostJsonLd
+        title={post.title}
+        description={post.excerpt || post.title}
+        slug={post.slug}
+        publishedAt={post.publishedAt}
+        updatedAt={post.updatedAt}
+        coverImage={post.coverImage}
+        language={post.language}
+      />
       <PublicHeader />
 
       <main className="flex-1 py-8 sm:py-12">

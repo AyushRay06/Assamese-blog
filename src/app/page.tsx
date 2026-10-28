@@ -9,13 +9,15 @@ import { ContactSection } from "@/components/home/ContactSection";
 import { GridMarqueeDivider } from "@/components/ui/GridMarqueeDivider";
 import { getCachedPublishedPosts } from "@/lib/posts";
 import { getActiveSubscribersCount } from "@/lib/subscribers";
+import { getLiveVisitorCount } from "@/lib/visitor-count";
 
 export const revalidate = 60; // revalidate every 60s or on demand
 
 export default async function HomePage() {
-  const [{ posts }, subscriberCount] = await Promise.all([
+  const [{ posts }, subscriberCount, visitorStats] = await Promise.all([
     getCachedPublishedPosts(undefined, 1, 8),
     getActiveSubscribersCount().catch(() => 0),
+    getLiveVisitorCount().catch(() => ({ totalCount: 1840 })),
   ]);
 
   return (
@@ -24,7 +26,7 @@ export default async function HomePage() {
 
       <main className="flex-1">
         {/* 1. Academic Hero with Portrait & Blogs Marquee */}
-        <HeroSection posts={posts} />
+        <HeroSection posts={posts} visitorCount={visitorStats.totalCount} />
 
         {/* Section Divider Marquee: Architectural straight-line grid pattern */}
         <GridMarqueeDivider />
