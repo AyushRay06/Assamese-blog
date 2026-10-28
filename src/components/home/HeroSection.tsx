@@ -49,13 +49,13 @@ export function HeroSection({ posts }: HeroSectionProps) {
           {/* Column: Hero Image of Prof. Surajit Borkotokey & Live Visitor Counter */}
           {/* Column: Hero Image of Prof. Surajit Borkotokey */}
           <div className="lg:col-span-5 order-1 lg:order-2 flex justify-center">
-            <div className="relative aspect-square w-48 sm:w-56 lg:w-64 overflow-hidden rounded-full border-2 border-border/80 bg-muted/20 shadow-lg ring-4 ring-muted/30 transition-transform duration-300 hover:scale-[1.02]">
+            <div className="relative aspect-square w-52 sm:w-60 lg:w-72 overflow-hidden rounded-full border-2 border-border/80 bg-muted/20 shadow-xl ring-4 ring-muted/30 transition-transform duration-300 hover:scale-[1.02]">
               <Image
-                src="/images/surajit-borkotokey.jpg"
+                src="/images/surajit-borkotokey-hero.jpg"
                 alt="Prof. Surajit Borkotokey - Professor of Mathematics, Dibrugarh University"
                 fill
-                sizes="(max-width: 640px) 192px, (max-width: 1024px) 224px, 256px"
-                className="object-cover object-top transition-transform duration-500 hover:scale-105"
+                sizes="(max-width: 640px) 208px, (max-width: 1024px) 240px, 288px"
+                className="object-cover object-center transition-transform duration-500 hover:scale-105"
                 priority
               />
             </div>
