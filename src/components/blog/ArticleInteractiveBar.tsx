@@ -125,9 +125,9 @@ export function ArticleInteractiveBar({
         />
       </div>
 
-      {/* 2. Article Interaction Strip */}
-      <div className="flex flex-wrap items-center justify-between gap-3 py-2.5 px-4 rounded-xl border border-border/60 bg-muted/20 backdrop-blur-sm text-muted-foreground my-6">
-        <div className="flex items-center gap-2">
+      {/* 2. Article Interaction Strip: Clean, Minimal Editorial Hairline */}
+      <div className="flex items-center justify-between gap-3 py-2.5 my-6 border-y border-border/40 text-muted-foreground text-xs">
+        <div className="flex items-center gap-3">
           {/* Blog Like Action */}
           <BlogLikeButton
             slug={slug}
@@ -138,36 +138,51 @@ export function ArticleInteractiveBar({
           {/* Jump to Comments */}
           <a
             href="#comments"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border border-border/50 hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title="Jump to discussion and comments"
           >
-            <MessageSquare className="h-3.5 w-3.5 text-primary" />
-            <span className="text-[11px] font-medium hidden sm:inline">Comments</span>
+            <MessageSquare className="h-3.5 w-3.5 text-primary/80" />
+            <span className="text-[11px] font-medium hidden sm:inline">Discussion</span>
           </a>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-2">
+          {/* Font Size Adjuster */}
+          <button
+            type="button"
+            onClick={handleCycleFontSize}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer"
+            title={`Adjust text size (currently ${fontSize})`}
+          >
+            <Type className="h-3.5 w-3.5 text-primary" />
+            <span className="text-[11px] font-mono">
+              {fontSize === "normal" ? "A" : fontSize === "comfortable" ? "A+" : "A++"}
+            </span>
+          </button>
+
+          <div className="h-3.5 w-px bg-border/40 mx-0.5 hidden sm:block" />
+
           {/* Copy Link */}
           <button
             type="button"
             onClick={handleCopyLink}
             className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono transition-all cursor-pointer",
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all cursor-pointer",
               copied
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                : "hover:bg-muted hover:text-foreground border border-border/50"
+                ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
             )}
-            title="Copy post link"
+            title="Copy link to article"
           >
             {copied ? (
               <>
                 <Check className="h-3.5 w-3.5 text-emerald-500" />
-                <span className="text-[11px] font-medium">Copied!</span>
+                <span className="text-[11px]">Copied!</span>
               </>
             ) : (
               <>
                 <Copy className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-medium">Copy Link</span>
+                <span className="text-[11px] hidden sm:inline">Share</span>
               </>
             )}
           </button>
@@ -176,7 +191,7 @@ export function ArticleInteractiveBar({
           <button
             type="button"
             onClick={handleShareWhatsApp}
-            className="p-1.5 rounded-md hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 border border-border/50 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-muted/40 transition-colors cursor-pointer"
             title="Share on WhatsApp"
             aria-label="Share on WhatsApp"
           >
@@ -187,7 +202,7 @@ export function ArticleInteractiveBar({
           <button
             type="button"
             onClick={handleShareTwitter}
-            className="p-1.5 rounded-md hover:bg-muted hover:text-foreground border border-border/50 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer"
             title="Share on X"
             aria-label="Share on X"
           >
@@ -198,27 +213,11 @@ export function ArticleInteractiveBar({
           <button
             type="button"
             onClick={handleShareLinkedIn}
-            className="p-1.5 rounded-md hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 border border-border/50 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md hover:text-blue-600 dark:hover:text-blue-400 hover:bg-muted/40 transition-colors cursor-pointer"
             title="Share on LinkedIn"
             aria-label="Share on LinkedIn"
           >
             <ExternalLink className="h-3.5 w-3.5" />
-          </button>
-
-          {/* Separator */}
-          <div className="h-4 w-px bg-border/60 mx-1" />
-
-          {/* Font Size Adjuster */}
-          <button
-            type="button"
-            onClick={handleCycleFontSize}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-mono border border-border/50 hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-            title={`Cycle text size (currently ${fontSize})`}
-          >
-            <Type className="h-3 w-3 text-primary" />
-            <span className="text-[11px]">
-              {fontSize === "normal" ? "A" : fontSize === "comfortable" ? "A+" : "A++"}
-            </span>
           </button>
         </div>
       </div>

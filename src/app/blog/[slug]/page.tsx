@@ -112,22 +112,12 @@ export default async function SinglePostPage({ params }: PostPageProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-background relative selection:bg-primary/20 selection:text-foreground">
-      {/* Ambient background glows for depth and visual richness */}
-      <div
-        className="pointer-events-none absolute top-0 inset-x-0 h-[520px] bg-gradient-to-b from-primary/[0.04] via-emerald-500/[0.02] to-transparent -z-10"
-        aria-hidden="true"
-      />
-      <div
-        className="pointer-events-none absolute top-[-140px] left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-primary/[0.08] dark:bg-primary/[0.12] rounded-full blur-3xl -z-10 opacity-70"
-        aria-hidden="true"
-      />
-
       <PublicHeader />
 
-      <main className="flex-1 py-8 sm:py-14">
+      <main className="flex-1 py-8 sm:py-12">
         <div className="container mx-auto max-w-3xl px-4 sm:px-6">
-          {/* Breadcrumbs & Navigation */}
-          <nav className="mb-8 flex items-center justify-between pb-4 border-b border-border/40 text-xs font-mono">
+          {/* Clean Navigation */}
+          <nav className="mb-6 flex items-center justify-between text-xs font-mono">
             <Link
               href="/blog"
               className="group inline-flex items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -136,147 +126,108 @@ export default async function SinglePostPage({ params }: PostPageProps) {
               <span>Back to writings</span>
             </Link>
 
-            <div className="hidden sm:flex items-center gap-2 text-muted-foreground/80">
-              <Link href="/" className="hover:text-foreground transition-colors">
-                Home
-              </Link>
-              <span>/</span>
-              <Link href="/blog" className="hover:text-foreground transition-colors">
-                Blog
-              </Link>
-              <span>/</span>
-              <span className="text-foreground font-semibold">{langConfig.nativeName}</span>
-            </div>
+            <span className="text-[11px] text-muted-foreground/70 font-mono">
+              {langConfig.nativeName}
+            </span>
           </nav>
 
           {/* Article Header Section */}
-          <header className="mb-10 space-y-6">
-            {/* Meta tags: Language, Date, Reading time */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono border border-border/80 bg-muted/40 text-foreground shadow-2xs">
+          <header className="mb-8 space-y-4">
+            {/* Meta: Language, Date, Reading time */}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground font-mono">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-border/70 bg-muted/30 text-foreground font-medium text-[11px]">
                 <span
                   className={cn(
-                    "h-2 w-2 rounded-full",
-                    isAssamese ? "bg-emerald-500 animate-pulse" : "bg-primary"
+                    "h-1.5 w-1.5 rounded-full",
+                    isAssamese ? "bg-emerald-500" : "bg-primary"
                   )}
                 />
-                <span className="font-medium">{langConfig.nativeName}</span>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground/80" />
-                  <time dateTime={post.publishedAt?.toISOString()}>
-                    {publishedDate}
-                  </time>
-                </span>
-                <span>&bull;</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-muted-foreground/80" />
-                  <span>{readingTimeText}</span>
-                </span>
-              </div>
+                <span>{langConfig.nativeName}</span>
+              </span>
+              <span>&bull;</span>
+              <time dateTime={post.publishedAt?.toISOString()}>
+                {publishedDate}
+              </time>
+              <span>&bull;</span>
+              <span>{readingTimeText}</span>
             </div>
 
             {/* Post Title */}
             <h1
               lang={langConfig.langAttr}
               className={cn(
-                "font-bold tracking-tight text-foreground leading-[1.2]",
+                "font-bold tracking-tight text-foreground leading-[1.25]",
                 isAssamese
-                  ? "font-assamese text-3xl sm:text-4xl lg:text-[44px]"
-                  : "font-heading text-3xl sm:text-4xl lg:text-[46px]"
+                  ? "font-assamese text-3xl sm:text-4xl lg:text-[42px]"
+                  : "font-heading text-3xl sm:text-4xl lg:text-[44px]"
               )}
             >
               {post.title}
             </h1>
 
-            {/* Author Byline Card (Top) */}
-            <div className="flex items-center justify-between gap-4 py-3.5 px-4 rounded-xl border border-border/60 bg-muted/20 backdrop-blur-xs">
+            {/* Post Subtitle / Excerpt (Natural editorial typography, no clunky box) */}
+            {post.excerpt && (
+              <p
+                lang={langConfig.langAttr}
+                className={cn(
+                  "text-base sm:text-lg text-muted-foreground/90 leading-relaxed pt-1",
+                  isAssamese ? "font-assamese" : "font-serif"
+                )}
+              >
+                {post.excerpt}
+              </p>
+            )}
+
+            {/* Clean Author Byline */}
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-border/40">
               <div className="flex items-center gap-3">
-                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-primary/20 shadow-xs">
+                <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-border/80">
                   <Image
                     src="/images/surajit-borkotokey.jpg"
                     alt="Prof. Surajit Borkotokey"
                     fill
-                    sizes="40px"
+                    sizes="36px"
                     className="object-cover object-top"
                   />
                 </div>
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-heading text-sm font-semibold text-foreground">
-                      Prof. Surajit Borkotokey
-                    </span>
-                    <span
-                      className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-primary/10 text-primary"
-                      title="Verified Author"
-                    >
-                      <CheckCircle2 className="h-3 w-3" />
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                  <span className="text-xs sm:text-sm font-semibold text-foreground">
+                    Prof. Surajit Borkotokey
+                  </span>
+                  <p className="text-[11px] text-muted-foreground">
                     Professor of Mathematics &bull; Dibrugarh University
                   </p>
                 </div>
               </div>
 
-              <Link
-                href="/#research"
-                className="hidden sm:inline-flex items-center gap-1 text-xs font-mono text-primary hover:underline"
-              >
-                <span>Profile</span>
-                <ExternalLink className="h-3 w-3" />
-              </Link>
+              {/* Tags */}
+              {post.tags && post.tags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {post.tags.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="rounded-full bg-muted/40 px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground"
+                    >
+                      #{tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-
-            {/* Post Excerpt / Lead Paragraph */}
-            {post.excerpt && (
-              <div
-                lang={langConfig.langAttr}
-                className="relative border-l-2 border-primary/60 pl-4 py-1.5 bg-primary/[0.02] rounded-r-lg"
-              >
-                <p
-                  className={cn(
-                    "text-lg sm:text-xl text-muted-foreground leading-relaxed",
-                    isAssamese ? "font-assamese" : "font-serif italic"
-                  )}
-                >
-                  {post.excerpt}
-                </p>
-              </div>
-            )}
-
-            {/* Post Tags */}
-            {post.tags && post.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {post.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="rounded-full border border-border/60 bg-muted/40 px-3 py-0.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    #{tag.name}
-                  </span>
-                ))}
-              </div>
-            )}
           </header>
 
-          {/* 16:9 Framed Cover Image */}
+          {/* Framed Cover Image (Clean, without distracting neon glow) */}
           {post.coverImage && (
-            <div className="relative mb-12 group">
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/15 via-emerald-500/10 to-indigo-500/15 blur-xl opacity-60 group-hover:opacity-85 transition-opacity duration-500" />
-              <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xl">
-                <BlogCoverImage
-                  src={post.coverImage}
-                  alt={post.title}
-                  isAssamese={isAssamese}
-                  priority={true}
-                  sizes="(max-width: 768px) 100vw, 840px"
-                  aspectClass="aspect-[16/9]"
-                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
-                />
-              </div>
+            <div className="relative mb-10 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
+              <BlogCoverImage
+                src={post.coverImage}
+                alt={post.title}
+                isAssamese={isAssamese}
+                priority={true}
+                sizes="(max-width: 768px) 100vw, 840px"
+                aspectClass="aspect-[16/9]"
+                className="object-cover"
+              />
             </div>
           )}
 
@@ -301,30 +252,30 @@ export default async function SinglePostPage({ params }: PostPageProps) {
           </div>
 
           {/* Author Biography Section */}
-          <section className="mt-14 p-6 sm:p-8 rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 shadow-sm">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-              <div className="relative h-18 w-18 shrink-0 overflow-hidden rounded-2xl border-2 border-primary/20 shadow-md">
+          <section className="mt-12 p-5 sm:p-6 rounded-2xl border border-border/50 bg-card/40">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-border/80">
                 <Image
                   src="/images/surajit-borkotokey.jpg"
                   alt="Prof. Surajit Borkotokey"
                   fill
-                  sizes="72px"
+                  sizes="56px"
                   className="object-cover object-top"
                 />
               </div>
-              <div className="space-y-1.5 flex-1">
+              <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-heading font-semibold text-lg text-foreground">
+                  <h3 className="font-heading font-semibold text-base text-foreground">
                     Prof. Surajit Borkotokey
                   </h3>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    Author & Researcher
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    Author &amp; Researcher
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Professor of Mathematics at Dibrugarh University, Assam. Specializes in Cooperative Game Theory and Network Science, and writes bilingual essays exploring mathematics, science, education, and Assamese heritage.
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Professor of Mathematics at Dibrugarh University, Assam. Specializes in Cooperative Game Theory and Network Science, writing bilingual reflections on mathematics, science, education, and Assamese heritage.
                 </p>
-                <div className="flex items-center gap-4 pt-1.5 text-xs font-mono text-primary">
+                <div className="flex items-center gap-4 pt-1 text-xs font-mono text-primary">
                   <Link href="/#research" className="hover:underline inline-flex items-center gap-1">
                     <span>Research Projects</span>
                     <ExternalLink className="h-3 w-3" />
