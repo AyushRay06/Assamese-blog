@@ -4,13 +4,14 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminDashboardView } from "@/components/admin/AdminDashboardView";
 import { getLiveVisitorCount } from "@/lib/visitor-count";
 import { getAllCommentsForAdmin } from "@/lib/comments";
+import { getAllSubscribersAdmin, AdminSubscriberItem } from "@/lib/subscribers";
 
 interface AdminDashboardProps {
   searchParams: Promise<{
     search?: string;
     status?: "DRAFT" | "PUBLISHED";
     language?: "EN" | "AS";
-    tab?: "posts" | "messages" | "comments";
+    tab?: "posts" | "messages" | "comments" | "subscribers";
   }>;
 }
 
@@ -20,6 +21,7 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
   let posts: Awaited<ReturnType<typeof getAllPostsAdmin>> = [];
   let contactMessages: Awaited<ReturnType<typeof prisma.contactMessage.findMany>> = [];
   let comments: Awaited<ReturnType<typeof getAllCommentsForAdmin>> = [];
+  let subscribers: AdminSubscriberItem[] = [];
   let stats = {
     totalPostsCount: 0,
     publishedCount: 0,
@@ -46,6 +48,7 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
         subscriberCount,
         fetchedComments,
         commentCount,
+        fetchedSubscribers,
       ] = await Promise.all([
         prisma.post.groupBy({
           by: ["status", "language"],
@@ -64,11 +67,13 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
         prisma.subscriber.count({ where: { isActive: true } }).catch(() => 0),
         getAllCommentsForAdmin().catch(() => []),
         prisma.comment.count().catch(() => 0),
+        getAllSubscribersAdmin().catch(() => []),
       ]);
 
       posts = fetchedPosts;
       contactMessages = fetchedMessages;
       comments = fetchedComments;
+      subscribers = fetchedSubscribers;
 
       let totalPosts = 0;
       let published = 0;
@@ -127,9 +132,12 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
           initialPosts={posts}
           initialMessages={contactMessages}
           initialComments={comments}
+          initialSubscribers={subscribers}
           stats={stats}
           initialTab={
-            params.tab === "comments"
+            params.tab === "subscribers"
+              ? "subscribers"
+              : params.tab === "comments"
               ? "comments"
               : params.tab === "messages"
               ? "messages"

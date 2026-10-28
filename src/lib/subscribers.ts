@@ -189,3 +189,27 @@ export async function notifySubscribersOfNewPost(post: {
     console.error("[Notify Subscribers Database Error]:", err);
   }
 }
+
+export interface AdminSubscriberItem {
+  id: string;
+  email: string;
+  name: string | null;
+  isActive: boolean;
+  subscribedAt: Date;
+  unsubscribedAt: Date | null;
+}
+
+/**
+ * Retrieves all subscribers for the admin dashboard, ordered by most recently joined
+ */
+export async function getAllSubscribersAdmin(): Promise<AdminSubscriberItem[]> {
+  try {
+    return await prisma.subscriber.findMany({
+      orderBy: { subscribedAt: "desc" },
+    });
+  } catch (err) {
+    console.error("[Get All Subscribers Error]:", err);
+    return [];
+  }
+}
+

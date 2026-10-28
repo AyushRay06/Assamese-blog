@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { cn } from "cn";
 import { AdminCommentsTable, AdminCommentItem } from "@/components/admin/AdminCommentsTable";
+import { AdminSubscribersTable } from "@/components/admin/AdminSubscribersTable";
+import { AdminSubscriberItem } from "@/lib/subscribers";
 
 interface PostItem {
   id: string;
@@ -42,6 +44,7 @@ interface AdminDashboardViewProps {
   initialPosts: PostItem[];
   initialMessages: ContactMessageItem[];
   initialComments?: AdminCommentItem[];
+  initialSubscribers?: AdminSubscriberItem[];
   stats: {
     totalPostsCount: number;
     publishedCount: number;
@@ -55,7 +58,7 @@ interface AdminDashboardViewProps {
     totalSubscribers?: number;
     totalCommentsCount?: number;
   };
-  initialTab?: "posts" | "messages" | "comments";
+  initialTab?: "posts" | "messages" | "comments" | "subscribers";
   initialStatus?: "DRAFT" | "PUBLISHED";
   initialLanguage?: "EN" | "AS";
   initialSearch?: string;
@@ -65,13 +68,14 @@ export function AdminDashboardView({
   initialPosts,
   initialMessages,
   initialComments = [],
+  initialSubscribers = [],
   stats,
   initialTab = "posts",
   initialStatus,
   initialLanguage,
   initialSearch = "",
 }: AdminDashboardViewProps) {
-  const [activeTab, setActiveTab] = React.useState<"posts" | "messages" | "comments">(initialTab);
+  const [activeTab, setActiveTab] = React.useState<"posts" | "messages" | "comments" | "subscribers">(initialTab);
   const [statusFilter, setStatusFilter] = React.useState<"DRAFT" | "PUBLISHED" | undefined>(
     initialStatus
   );
@@ -132,7 +136,12 @@ export function AdminDashboardView({
 
   // Sync state to URL shallowly without triggering server network roundtrips
   const updateUrl = React.useCallback(
-    (tab: "posts" | "messages" | "comments", status?: string, language?: string, search?: string) => {
+    (
+      tab: "posts" | "messages" | "comments" | "subscribers",
+      status?: string,
+      language?: string,
+      search?: string
+    ) => {
       const params = new URLSearchParams();
       if (tab !== "posts") params.set("tab", tab);
       if (status) params.set("status", status);
@@ -145,7 +154,9 @@ export function AdminDashboardView({
     []
   );
 
-  const handleTabChange = (tab: "posts" | "messages" | "comments") => {
+  const handleTabChange = (
+    tab: "posts" | "messages" | "comments" | "subscribers"
+  ) => {
     setActiveTab(tab);
     updateUrl(tab, statusFilter, languageFilter, searchQuery);
   };
@@ -360,7 +371,16 @@ export function AdminDashboardView({
           </div>
 
           {/* Email Subscribers */}
-          <div className="flex flex-col gap-1 rounded-xl p-3 sm:p-3.5 transition-all text-left border border-border/40 bg-muted/20 hover:bg-muted/40">
+          <button
+            type="button"
+            onClick={() => handleTabChange("subscribers")}
+            className={cn(
+              "flex flex-col gap-1 rounded-xl p-3 sm:p-3.5 transition-all text-left border border-border/40 cursor-pointer",
+              activeTab === "subscribers"
+                ? "bg-secondary text-foreground ring-1 ring-border shadow-xs"
+                : "bg-muted/20 hover:bg-muted/40"
+            )}
+          >
             <div className="flex items-center justify-between text-xs font-medium">
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Users className="h-3.5 w-3.5 text-primary" />
@@ -371,12 +391,12 @@ export function AdminDashboardView({
               </span>
             </div>
             <span className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground font-heading">
-              {(stats.totalSubscribers || 0).toLocaleString()}
+              {(stats.totalSubscribers || initialSubscribers.length || 0).toLocaleString()}
             </span>
             <span className="text-[11px] text-muted-foreground/70">
               Email readers
             </span>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -437,6 +457,23 @@ export function AdminDashboardView({
                 ({stats.totalCommentsCount || initialComments.length})
               </span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("subscribers")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium transition-all cursor-pointer",
+                activeTab === "subscribers"
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Subscribers</span>
+              <span className="text-[11px] opacity-70 font-mono">
+                ({initialSubscribers.length || stats.totalSubscribers || 0})
+              </span>
+            </button>
           </div>
 
           {activeTab === "posts" && (
@@ -447,6 +484,11 @@ export function AdminDashboardView({
           {activeTab === "comments" && (
             <div className="text-xs text-muted-foreground">
               {stats.totalCommentsCount || initialComments.length} reader comments &amp; feedback
+            </div>
+          )}
+          {activeTab === "subscribers" && (
+            <div className="text-xs text-muted-foreground">
+              {initialSubscribers.length || stats.totalSubscribers || 0} registered email subscribers
             </div>
           )}
         </div>
@@ -591,6 +633,13 @@ export function AdminDashboardView({
         {activeTab === "comments" && (
           <div className="space-y-4">
             <AdminCommentsTable initialComments={initialComments} />
+          </div>
+        )}
+
+        {/* TAB CONTENT: EMAIL SUBSCRIBERS */}
+        {activeTab === "subscribers" && (
+          <div className="space-y-4">
+            <AdminSubscribersTable initialSubscribers={initialSubscribers} />
           </div>
         )}
       </div>
