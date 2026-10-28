@@ -29,20 +29,20 @@ export default async function HomePage() {
         {/* Section Divider Marquee: Architectural straight-line grid pattern */}
         <GridMarqueeDivider />
 
-        {/* 2. Research Focus & Mathematical Work with Drawer Figure */}
-        <ResearchSection />
+        {/* 2. Blogs & Writings Gateway Section */}
+        <BlogsSection />
 
         {/* Section Divider Marquee: Reverse scroll */}
         <GridMarqueeDivider reverse />
 
-        {/* 3. International Fellowships & Governance with Cabinet Figure */}
-        <FellowshipsSection />
+        {/* 3. Research Focus & Mathematical Work with Drawer Figure */}
+        <ResearchSection />
 
         {/* Section Divider Marquee */}
         <GridMarqueeDivider />
 
-        {/* 4. Blogs & Writings Gateway Section */}
-        <BlogsSection />
+        {/* 4. International Fellowships & Governance with Cabinet Figure */}
+        <FellowshipsSection />
 
         {/* Section Divider Marquee: Reverse scroll */}
         <GridMarqueeDivider reverse />

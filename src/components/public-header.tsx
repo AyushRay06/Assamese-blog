@@ -24,11 +24,11 @@ export function PublicHeader() {
         >
           <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border shadow-xs">
             <Image
-              src="/images/surajit-borkotokey.jpg"
+              src="/images/surajit-borkotokey-hero.jpg"
               alt="Prof. Surajit Borkotokey"
               fill
               sizes="32px"
-              className="object-cover object-top"
+              className="object-cover object-center"
               priority
             />
           </div>
