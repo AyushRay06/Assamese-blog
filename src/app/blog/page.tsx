@@ -1,4 +1,4 @@
-import { getPublishedPosts, getPostCounts } from "@/lib/posts";
+import { getCachedPublishedPosts, getCachedPostCounts, getPublishedPosts, getPostCounts } from "@/lib/posts";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { PostCard } from "@/components/blog/PostCard";
@@ -9,7 +9,7 @@ import BookshelfFigure from "@/components/hairline/BookshelfFigure";
 import { GridMarqueeDivider } from "@/components/ui/GridMarqueeDivider";
 import { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Blogs & Writings | Prof. Surajit Borkotokey",
@@ -65,11 +65,19 @@ export default async function BlogArchivePage({ searchParams }: BlogArchivePageP
   const activeLang = rawLang === "EN" || rawLang === "AS" ? rawLang : undefined;
   const currentPage = Math.max(1, parseInt(params.page || "1", 10) || 1);
 
-  // Direct, fast queries with zero stale-cache desync
-  const [postsData, counts] = await Promise.all([
-    getPublishedPosts({ language: activeLang, page: currentPage, limit: 12 }),
-    getPostCounts(),
+  // Dual-resilient queries with ISR caching & live fallback
+  let [postsData, counts] = await Promise.all([
+    getCachedPublishedPosts(activeLang, currentPage, 12),
+    getCachedPostCounts(),
   ]);
+
+  if (!postsData || postsData.posts.length === 0) {
+    postsData = await getPublishedPosts({ language: activeLang, page: currentPage, limit: 12 });
+  }
+
+  if (counts.all === 0) {
+    counts = await getPostCounts();
+  }
 
   const { posts, totalPages } = postsData;
 

@@ -71,7 +71,7 @@ export async function getPublishedPosts({
       hasMore: page < totalPages,
     };
   } catch (error) {
-    console.warn("getPublishedPosts database error:", error);
+    console.error("CRITICAL getPublishedPosts database error:", error);
     return {
       posts: [],
       totalCount: 0,
@@ -82,24 +82,16 @@ export async function getPublishedPosts({
   }
 }
 
-const cachedPublishedPostsQuery = unstable_cache(
-  async (language?: "EN" | "AS", page: number = 1, limit: number = 12) => {
-    return getPublishedPosts({ language, page, limit });
-  },
-  ["published-posts-cache"],
-  { revalidate: 60, tags: ["posts"] }
-);
-
-export async function getCachedPublishedPosts(
+export function getCachedPublishedPosts(
   language?: "EN" | "AS",
   page: number = 1,
   limit: number = 12
 ) {
-  try {
-    return await cachedPublishedPostsQuery(language, page, limit);
-  } catch {
-    return getPublishedPosts({ language, page, limit });
-  }
+  return unstable_cache(
+    () => getPublishedPosts({ language, page, limit }),
+    ["published-posts-cache", language || "ALL", String(page), String(limit)],
+    { revalidate: 60, tags: ["posts"] }
+  )();
 }
 
 export async function getPostCounts() {
