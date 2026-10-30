@@ -2,16 +2,26 @@ import prisma from "@/lib/prisma";
 import { PostStatus, type Post } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+export const revalidate = 3600; // Cache RSS feed for 1 hour
+
 export async function GET() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-  let posts: Post[] = [];
+  let posts: any[] = [];
   if (process.env.DATABASE_URL) {
     try {
       posts = await prisma.post.findMany({
         where: { status: PostStatus.PUBLISHED },
         orderBy: { publishedAt: "desc" },
-        take: 50,
+        take: 30,
+        select: {
+          title: true,
+          slug: true,
+          publishedAt: true,
+          createdAt: true,
+          excerpt: true,
+          contentHtml: true,
+        },
       });
     } catch (err) {
       console.warn("rss: unable to query posts database:", err);

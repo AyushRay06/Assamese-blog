@@ -32,7 +32,7 @@ export default async function HomePage() {
         <GridMarqueeDivider />
 
         {/* 2. Blogs & Writings Gateway Section */}
-        <BlogsSection />
+        <BlogsSection initialPosts={posts.slice(0, 3)} totalCount={posts.length} />
 
         {/* Section Divider Marquee: Reverse scroll */}
         <GridMarqueeDivider reverse />

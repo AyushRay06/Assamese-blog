@@ -22,6 +22,7 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
   let contactMessages: Awaited<ReturnType<typeof prisma.contactMessage.findMany>> = [];
   let comments: Awaited<ReturnType<typeof getAllCommentsForAdmin>> = [];
   let subscribers: AdminSubscriberItem[] = [];
+  let dbError: string | null = null;
   let stats = {
     totalPostsCount: 0,
     publishedCount: 0,
@@ -111,8 +112,9 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
         totalSubscribers: subscriberCount,
         totalCommentsCount: commentCount,
       };
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Admin dashboard database error:", err);
+      dbError = err?.message || String(err);
       const fallbackVisitors = await getLiveVisitorCount();
       stats.totalVisitors = fallbackVisitors.totalCount;
       stats.todayVisitorGrowth = fallbackVisitors.todayIncrement;
@@ -134,6 +136,7 @@ export default async function AdminDashboard({ searchParams }: AdminDashboardPro
           initialComments={comments}
           initialSubscribers={subscribers}
           stats={stats}
+          dbError={dbError}
           initialTab={
             params.tab === "subscribers"
               ? "subscribers"

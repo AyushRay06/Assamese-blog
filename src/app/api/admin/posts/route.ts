@@ -5,7 +5,7 @@ import { sanitizePostHtml } from "@/lib/sanitize";
 import { calculateReadingTime, LanguageCode } from "@/lib/languages";
 import { verifyBasicAuthHeader, checkRateLimit } from "@/lib/auth";
 import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/session";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { PostStatus, Language } from "@prisma/client";
 import { notifySubscribersOfNewPost } from "@/lib/subscribers";
 
@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
       revalidatePath("/admin");
       revalidatePath("/rss.xml");
       revalidatePath("/sitemap.xml");
+      revalidateTag("posts", { expire: 0 });
     } catch (revErr) {
       console.warn("Revalidation warning:", revErr);
     }

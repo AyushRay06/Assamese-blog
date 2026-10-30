@@ -12,6 +12,8 @@ import {
   RotateCcw,
   Users,
   MessageSquare,
+  AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "cn";
 import { AdminCommentsTable, AdminCommentItem } from "@/components/admin/AdminCommentsTable";
@@ -62,6 +64,7 @@ interface AdminDashboardViewProps {
   initialStatus?: "DRAFT" | "PUBLISHED";
   initialLanguage?: "EN" | "AS";
   initialSearch?: string;
+  dbError?: string | null;
 }
 
 export function AdminDashboardView({
@@ -70,6 +73,7 @@ export function AdminDashboardView({
   initialComments = [],
   initialSubscribers = [],
   stats,
+  dbError,
   initialTab = "posts",
   initialStatus,
   initialLanguage,
@@ -127,7 +131,7 @@ export function AdminDashboardView({
       }
     }
 
-    const interval = setInterval(syncVisitors, 30000);
+    const interval = setInterval(syncVisitors, 300000); // Poll every 5 minutes instead of 30 seconds to preserve bandwidth
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -224,6 +228,36 @@ export function AdminDashboardView({
           <NewPostDropdown />
         </div>
       </div>
+
+      {/* Database Error / Quota Alert Banner */}
+      {dbError && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-5 text-amber-900 dark:text-amber-200">
+          <div className="flex items-start gap-3.5">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="space-y-2 text-xs sm:text-sm">
+              <div className="font-semibold text-amber-950 dark:text-amber-100 flex items-center gap-2">
+                <span>Database Connection Notice: Neon Quota Limit Reached</span>
+              </div>
+              <p className="text-muted-foreground leading-relaxed">
+                {dbError.includes("quota")
+                  ? "Your Neon PostgreSQL database project has exceeded its monthly free tier compute quota. Your 16 blog posts are completely safe in Neon, but Neon has temporarily paused live queries until the plan is upgraded or the monthly quota resets on the 1st of the month."
+                  : `Unable to connect to the Neon database: ${dbError}. Your blog posts are safe, but query responses are paused.`}
+              </p>
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <a
+                  href="https://console.neon.tech"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 font-medium underline underline-offset-4 hover:text-amber-950 dark:hover:text-amber-50"
+                >
+                  <span>Open Neon Console to Unpause / Upgrade</span>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Minimalist Metrics Strip */}
       <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-xs p-4 sm:p-6 shadow-xs">

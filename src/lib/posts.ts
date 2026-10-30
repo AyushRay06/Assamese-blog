@@ -39,8 +39,23 @@ export async function getPublishedPosts({
         },
         skip,
         take: limit,
-        include: {
-          tags: true,
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          excerpt: true,
+          coverImage: true,
+          language: true,
+          status: true,
+          publishedAt: true,
+          readingTime: true,
+          likes: true,
+          tags: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       }),
       prisma.post.count({ where }),
@@ -67,34 +82,44 @@ export async function getPublishedPosts({
   }
 }
 
-export function getCachedPublishedPosts(
+const cachedPublishedPostsQuery = unstable_cache(
+  async (language?: "EN" | "AS", page: number = 1, limit: number = 12) => {
+    return getPublishedPosts({ language, page, limit });
+  },
+  ["published-posts-cache"],
+  { revalidate: 60, tags: ["posts"] }
+);
+
+export async function getCachedPublishedPosts(
   language?: "EN" | "AS",
   page: number = 1,
   limit: number = 12
 ) {
-  return unstable_cache(
-    () => getPublishedPosts({ language, page, limit }),
-    ["published-posts-cache", language || "ALL", String(page), String(limit)],
-    { revalidate: 60, tags: ["posts"] }
-  )();
+  try {
+    return await cachedPublishedPostsQuery(language, page, limit);
+  } catch {
+    return getPublishedPosts({ language, page, limit });
+  }
+}
+
+export async function getPostCounts() {
+  if (!process.env.DATABASE_URL) {
+    return { all: 0, en: 0, as: 0 };
+  }
+  try {
+    const [all, en, as] = await Promise.all([
+      prisma.post.count({ where: { status: PostStatus.PUBLISHED } }),
+      prisma.post.count({ where: { status: PostStatus.PUBLISHED, language: Language.EN } }),
+      prisma.post.count({ where: { status: PostStatus.PUBLISHED, language: Language.AS } }),
+    ]);
+    return { all, en, as };
+  } catch {
+    return { all: 0, en: 0, as: 0 };
+  }
 }
 
 export const getCachedPostCounts = unstable_cache(
-  async () => {
-    if (!process.env.DATABASE_URL) {
-      return { all: 0, en: 0, as: 0 };
-    }
-    try {
-      const [all, en, as] = await Promise.all([
-        prisma.post.count({ where: { status: PostStatus.PUBLISHED } }),
-        prisma.post.count({ where: { status: PostStatus.PUBLISHED, language: Language.EN } }),
-        prisma.post.count({ where: { status: PostStatus.PUBLISHED, language: Language.AS } }),
-      ]);
-      return { all, en, as };
-    } catch {
-      return { all: 0, en: 0, as: 0 };
-    }
-  },
+  getPostCounts,
   ["published-counts-cache"],
   { revalidate: 60, tags: ["posts"] }
 );
@@ -137,8 +162,23 @@ export async function getRelatedPosts(currentPostId: string, limit: number = 2) 
         publishedAt: "desc",
       },
       take: limit,
-      include: {
-        tags: true,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        coverImage: true,
+        language: true,
+        status: true,
+        publishedAt: true,
+        readingTime: true,
+        likes: true,
+        tags: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
   } catch (error) {

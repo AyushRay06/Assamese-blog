@@ -3,8 +3,20 @@ import { ArrowUpRight, BookOpen } from "lucide-react";
 import { getCachedPublishedPosts } from "@/lib/posts";
 import { PostCard } from "@/components/blog/PostCard";
 
-export async function BlogsSection() {
-  const { posts, totalCount } = await getCachedPublishedPosts(undefined, 1, 3);
+interface BlogsSectionProps {
+  initialPosts?: any[];
+  totalCount?: number;
+}
+
+export async function BlogsSection({ initialPosts, totalCount: propTotalCount }: BlogsSectionProps = {}) {
+  let posts = initialPosts;
+  let totalCount = propTotalCount;
+
+  if (!posts) {
+    const fetched = await getCachedPublishedPosts(undefined, 1, 3);
+    posts = fetched.posts;
+    totalCount = fetched.totalCount;
+  }
 
   return (
     <section id="blog" className="relative py-16 sm:py-24">
