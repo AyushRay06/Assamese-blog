@@ -116,10 +116,16 @@ export const getCachedPostCounts = unstable_cache(
   { revalidate: 60, tags: ["posts"] }
 );
 
-export async function getPublishedPostBySlug(slug: string) {
+const SLUG_ALIASES: Record<string, string> = {
+  "blogpost-sampurna-grantha": "aporimeyo-sampurna",
+  "xuchipatr": "aporimeyo-suchipatra",
+};
+
+export async function getPublishedPostBySlug(rawSlug: string) {
   if (!process.env.DATABASE_URL) {
     return null;
   }
+  const slug = SLUG_ALIASES[rawSlug] || rawSlug;
   try {
     const post = await prisma.post.findUnique({
       where: { slug },

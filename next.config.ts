@@ -18,6 +18,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/blog/blogpost-sampurna-grantha",
+        destination: "/blog/aporimeyo-sampurna",
+        permanent: true,
+      },
+      {
+        source: "/blog/xuchipatr",
+        destination: "/blog/aporimeyo-suchipatra",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
